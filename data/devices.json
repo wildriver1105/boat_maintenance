@@ -1,0 +1,157 @@
+[
+  {
+    "id": "dev-engine-main",
+    "name": "메인 엔진",
+    "category": "engine",
+    "position": { "x": 735, "y": 430 },
+    "sensorId": "eng-main",
+    "config": { "maxTempC": 105, "capacityHp": 54 }
+  },
+  {
+    "id": "dev-fuel-main",
+    "name": "연료 탱크",
+    "category": "fuel",
+    "position": { "x": 470, "y": 480 },
+    "sensorId": "fuel-main",
+    "config": { "capacityL": 240 }
+  },
+  {
+    "id": "dev-water-fwd",
+    "name": "청수 탱크",
+    "category": "water",
+    "position": { "x": 1080, "y": 560 },
+    "sensorId": "water-fwd",
+    "config": { "capacityL": 330 }
+  },
+  {
+    "id": "dev-waste-aft",
+    "name": "오수 탱크",
+    "category": "waste",
+    "position": { "x": 690, "y": 300 },
+    "sensorId": "waste-aft",
+    "config": { "capacityL": 80 }
+  },
+  {
+    "id": "dev-battery-house",
+    "name": "하우스 배터리 뱅크",
+    "category": "electrical",
+    "position": { "x": 545, "y": 460 },
+    "sensorId": "batt-house",
+    "config": { "nominalV": 12, "capacityAh": 440 }
+  },
+  {
+    "id": "dev-bilge-main",
+    "name": "빌지 펌프",
+    "category": "bilge",
+    "position": { "x": 815, "y": 555 },
+    "sensorId": "bilge-main",
+    "config": { "alarmMm": 150 }
+  },
+  {
+    "id": "dev-seacock-engine",
+    "name": "시콕크(엔진 취수)",
+    "category": "seacock",
+    "position": { "x": 700, "y": 515 },
+    "sensorId": "cock-engine"
+  },
+  {
+    "id": "dev-seacock-galley",
+    "name": "시콕크(갤리 배수)",
+    "category": "seacock",
+    "position": { "x": 1010, "y": 615 },
+    "sensorId": "cock-galley"
+  },
+  {
+    "id": "dev-victron-multiplus",
+    "name": "Victron Multiplus II",
+    "category": "charging",
+    "position": { "x": 420, "y": 545 },
+    "sensorId": "chg-multiplus",
+    "config": { "ratedW": 3000 }
+  },
+  {
+    "id": "dev-victron-mppt",
+    "name": "Victron MPPT 150/70",
+    "category": "charging",
+    "position": { "x": 340, "y": 470 },
+    "sensorId": "chg-mppt",
+    "config": { "ratedW": 1000 }
+  },
+  {
+    "id": "dev-promariner-charger",
+    "name": "ProMariner 충전기",
+    "category": "charging",
+    "position": { "x": 330, "y": 555 },
+    "sensorId": "chg-promariner"
+  },
+  {
+    "id": "dev-victron-cerbo",
+    "name": "Victron Cerbo GX",
+    "category": "electrical",
+    "position": { "x": 575, "y": 400 },
+    "sensorId": "elec-cerbo"
+  },
+  {
+    "id": "dev-victron-smartshunt",
+    "name": "Victron SmartShunt",
+    "category": "electrical",
+    "position": { "x": 470, "y": 405 },
+    "sensorId": "elec-shunt"
+  },
+  {
+    "id": "dev-axiom-mfd",
+    "name": "Raymarine Axiom MFD",
+    "category": "navigation",
+    "position": { "x": 1250, "y": 335 },
+    "sensorId": "nav-axiom"
+  },
+  {
+    "id": "dev-acu400",
+    "name": "오토파일럿 ACU-400",
+    "category": "navigation",
+    "position": { "x": 1360, "y": 485 },
+    "sensorId": "nav-acu400"
+  },
+  {
+    "id": "dev-rvm400",
+    "name": "RVM400 소나 센서",
+    "category": "navigation",
+    "position": { "x": 1560, "y": 470 },
+    "sensorId": "nav-rvm400"
+  },
+  {
+    "id": "dev-starlink",
+    "name": "Starlink",
+    "category": "comms",
+    "position": { "x": 1180, "y": 255 },
+    "sensorId": "comm-starlink"
+  },
+  {
+    "id": "dev-icom-vhf",
+    "name": "ICOM VHF",
+    "category": "comms",
+    "position": { "x": 980, "y": 260 },
+    "sensorId": "comm-vhf"
+  },
+  {
+    "id": "dev-ais700",
+    "name": "AIS 700",
+    "category": "comms",
+    "position": { "x": 880, "y": 235 },
+    "sensorId": "comm-ais"
+  },
+  {
+    "id": "dev-epirb",
+    "name": "EPIRB",
+    "category": "safety",
+    "position": { "x": 1090, "y": 225 },
+    "sensorId": "safe-epirb"
+  },
+  {
+    "id": "dev-bow-thruster",
+    "name": "바우 스러스터",
+    "category": "other",
+    "position": { "x": 1700, "y": 428 },
+    "sensorId": "misc-bowthruster"
+  }
+]
