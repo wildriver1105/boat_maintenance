@@ -419,34 +419,47 @@ function DeviceMarkers({
 function Rig({
   section,
   extGroup,
+  intGroup,
   hullMat,
   boatGroup,
 }: {
   section: Section;
   extGroup: React.RefObject<THREE.Group | null>;
+  intGroup: React.RefObject<THREE.Group | null>;
   hullMat: React.RefObject<THREE.MeshStandardMaterial | null>;
   boatGroup: React.RefObject<THREE.Group | null>;
 }) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const { camera } = useThree();
   const extMats = useRef<THREE.Material[]>([]);
+  const intMats = useRef<THREE.Material[]>([]);
   const tween = useRef({ active: false });
   const interiorRef = useRef(false);
 
-  // 외장 머티리얼 수집 (1회)
+  // 외장/내부 머티리얼 수집 (1회)
   useEffect(() => {
-    const mats: THREE.Material[] = [];
-    extGroup.current?.traverse((o) => {
-      if ((o as THREE.Mesh).isMesh) {
-        const m = (o as THREE.Mesh).material;
-        for (const mat of Array.isArray(m) ? m : [m]) {
-          mat.transparent = true;
-          mats.push(mat);
+    const collect = (
+      group: React.RefObject<THREE.Group | null>,
+      store: React.MutableRefObject<THREE.Material[]>,
+    ) => {
+      const mats: THREE.Material[] = [];
+      group.current?.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) {
+          const m = (o as THREE.Mesh).material;
+          for (const mat of Array.isArray(m) ? m : [m]) {
+            mat.transparent = true;
+            mats.push(mat);
+          }
         }
-      }
-    });
-    extMats.current = mats;
-  }, [extGroup]);
+      });
+      store.current = mats;
+    };
+    collect(extGroup, extMats);
+    collect(intGroup, intMats);
+    // 시작은 외부 모드: 내부는 숨김에서 시작
+    for (const m of intMats.current) m.opacity = 0;
+    if (intGroup.current) intGroup.current.visible = false;
+  }, [extGroup, intGroup]);
 
   // 섹션 변경 → 카메라 트윈 시작 + 클리핑 평면 적용
   useEffect(() => {
@@ -503,13 +516,21 @@ function Rig({
       else if (dist > 10.5) interiorRef.current = false;
     } else interiorRef.current = false;
 
-    // 페이드
+    // 페이드 — 외부 모드에서는 내부를 완전히 숨겨 헐 밖 관통이 보이지 않게 한다
     const extTarget = interiorRef.current ? 0.07 : 1;
     const hullTarget = interiorRef.current ? 0.14 : 1;
+    const intTarget = interiorRef.current ? 1 : 0;
     for (const m of extMats.current) {
       m.opacity = THREE.MathUtils.damp(m.opacity, extTarget, 7, d);
       m.depthWrite = m.opacity > 0.5;
     }
+    let intOpacity = intTarget;
+    for (const m of intMats.current) {
+      m.opacity = THREE.MathUtils.damp(m.opacity, intTarget, 7, d);
+      m.depthWrite = m.opacity > 0.5;
+      intOpacity = m.opacity;
+    }
+    if (intGroup.current) intGroup.current.visible = intOpacity > 0.02;
     const hm = hullMat.current;
     if (hm) {
       hm.opacity = THREE.MathUtils.damp(hm.opacity, hullTarget, 7, d);
@@ -549,6 +570,7 @@ export default function Scene3D({
   const hullGeo = useMemo(() => buildLoft("hull"), []);
   const hullMat = useRef<THREE.MeshStandardMaterial>(null);
   const extGroup = useRef<THREE.Group>(null);
+  const intGroup = useRef<THREE.Group>(null);
   const boatGroup = useRef<THREE.Group>(null);
 
   return (
@@ -605,7 +627,9 @@ export default function Scene3D({
         <group ref={extGroup}>
           <Exterior />
         </group>
-        <Interior />
+        <group ref={intGroup}>
+          <Interior />
+        </group>
       </group>
 
       <DeviceMarkers
@@ -616,7 +640,13 @@ export default function Scene3D({
         section={section}
       />
 
-      <Rig section={section} extGroup={extGroup} hullMat={hullMat} boatGroup={boatGroup} />
+      <Rig
+        section={section}
+        extGroup={extGroup}
+        intGroup={intGroup}
+        hullMat={hullMat}
+        boatGroup={boatGroup}
+      />
     </>
   );
 }
