@@ -45,7 +45,7 @@ export default function DevicePlacementForm({ initial, onSave, onCancel }: Props
   };
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-900/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <form
         onSubmit={submit}
         className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"

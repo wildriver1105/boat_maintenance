@@ -11,7 +11,7 @@ export default function UserMenu() {
   const isAdmin = user.role === "admin";
 
   return (
-    <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
+    <div className="flex items-center gap-2 border-l border-slate-300/50 pl-2">
       <div className="text-right">
         <div className="text-sm font-medium text-slate-700">{user.name}</div>
         <div className="text-[11px] text-slate-400">
