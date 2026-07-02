@@ -6,16 +6,18 @@ import { summarize } from "@/lib/format";
 
 type Props = {
   device: Device;
+  /** 현재 뷰에서의 표시 좌표 (평면=position, 측면=x+sideY) */
+  pos: { x: number; y: number };
   reading?: DeviceReading;
   selected: boolean;
   onSelect: (id: string) => void;
 };
 
-export default function DeviceMarker({ device, reading, selected, onSelect }: Props) {
+export default function DeviceMarker({ device, pos, reading, selected, onSelect }: Props) {
   const cat = CATEGORY_META[device.category];
   const status = device.sensorId ? reading?.status ?? "offline" : "offline";
   const color = STATUS_META[status].color;
-  const { x, y } = device.position;
+  const { x, y } = pos;
   const r = 17;
 
   return (

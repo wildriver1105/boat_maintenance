@@ -14,6 +14,8 @@ export type DraftDevice = {
   name: string;
   category: DeviceCategory;
   position: { x: number; y: number };
+  /** 측면 뷰에서 배치했을 때의 수직 위치 */
+  sideY?: number;
   sensorId?: string;
   notes?: string;
 };

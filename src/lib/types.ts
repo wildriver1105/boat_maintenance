@@ -17,13 +17,18 @@ export type DeviceCategory =
 
 export type DeviceStatus = "ok" | "warning" | "alert" | "offline";
 
+/** 도면 뷰 — 평면(위) / 좌현 프로파일 / 우현 프로파일 */
+export type DeckView = "top" | "port" | "starboard";
+
 /** 도면 위 한 지점에 놓인 관리 대상 부품/기기 */
 export interface Device {
   id: string;
   name: string;
   category: DeviceCategory;
-  /** SVG viewBox(0 0 2000 850) 기준 좌표 */
+  /** SVG viewBox(0 0 2000 850) 기준 좌표 (평면 뷰) */
   position: { x: number; y: number };
+  /** 측면(프로파일) 뷰에서의 수직 위치. x 는 position.x 를 공유. 없으면 중앙 높이 */
+  sideY?: number;
   /** 텔레메트리 바인딩 키. 없으면 센서 미연결(offline)로 표시 */
   sensorId?: string;
   /** 라벨 위치 미세조정(옵션). 없으면 자동 배치(상/하단 여백) */

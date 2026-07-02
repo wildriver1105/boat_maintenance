@@ -4,6 +4,7 @@
     "name": "메인 엔진",
     "category": "engine",
     "position": { "x": 735, "y": 430 },
+    "sideY": 534,
     "sensorId": "eng-main",
     "config": { "maxTempC": 105, "capacityHp": 54 }
   },
@@ -12,6 +13,7 @@
     "name": "연료 탱크",
     "category": "fuel",
     "position": { "x": 470, "y": 480 },
+    "sideY": 512,
     "sensorId": "fuel-main",
     "config": { "capacityL": 240 }
   },
@@ -20,6 +22,7 @@
     "name": "청수 탱크",
     "category": "water",
     "position": { "x": 1080, "y": 560 },
+    "sideY": 528,
     "sensorId": "water-fwd",
     "config": { "capacityL": 330 }
   },
@@ -28,6 +31,7 @@
     "name": "오수 탱크",
     "category": "waste",
     "position": { "x": 690, "y": 300 },
+    "sideY": 470,
     "sensorId": "waste-aft",
     "config": { "capacityL": 80 }
   },
@@ -36,6 +40,7 @@
     "name": "하우스 배터리 뱅크",
     "category": "electrical",
     "position": { "x": 545, "y": 460 },
+    "sideY": 520,
     "sensorId": "batt-house",
     "config": { "nominalV": 12, "capacityAh": 440 }
   },
@@ -44,6 +49,7 @@
     "name": "빌지 펌프",
     "category": "bilge",
     "position": { "x": 815, "y": 555 },
+    "sideY": 562,
     "sensorId": "bilge-main",
     "config": { "alarmMm": 150 }
   },
@@ -52,6 +58,7 @@
     "name": "시콕크(엔진 취수)",
     "category": "seacock",
     "position": { "x": 700, "y": 515 },
+    "sideY": 570,
     "sensorId": "cock-engine"
   },
   {
@@ -59,6 +66,7 @@
     "name": "시콕크(갤리 배수)",
     "category": "seacock",
     "position": { "x": 1010, "y": 615 },
+    "sideY": 566,
     "sensorId": "cock-galley"
   },
   {
@@ -66,6 +74,7 @@
     "name": "Victron Multiplus II",
     "category": "charging",
     "position": { "x": 420, "y": 545 },
+    "sideY": 470,
     "sensorId": "chg-multiplus",
     "config": { "ratedW": 3000 }
   },
@@ -74,6 +83,7 @@
     "name": "Victron MPPT 150/70",
     "category": "charging",
     "position": { "x": 340, "y": 470 },
+    "sideY": 452,
     "sensorId": "chg-mppt",
     "config": { "ratedW": 1000 }
   },
@@ -82,6 +92,7 @@
     "name": "ProMariner 충전기",
     "category": "charging",
     "position": { "x": 330, "y": 555 },
+    "sideY": 492,
     "sensorId": "chg-promariner"
   },
   {
@@ -89,6 +100,7 @@
     "name": "Victron Cerbo GX",
     "category": "electrical",
     "position": { "x": 575, "y": 400 },
+    "sideY": 420,
     "sensorId": "elec-cerbo"
   },
   {
@@ -96,6 +108,7 @@
     "name": "Victron SmartShunt",
     "category": "electrical",
     "position": { "x": 470, "y": 405 },
+    "sideY": 508,
     "sensorId": "elec-shunt"
   },
   {
@@ -103,6 +116,7 @@
     "name": "Raymarine Axiom MFD",
     "category": "navigation",
     "position": { "x": 1250, "y": 335 },
+    "sideY": 420,
     "sensorId": "nav-axiom"
   },
   {
@@ -110,6 +124,7 @@
     "name": "오토파일럿 ACU-400",
     "category": "navigation",
     "position": { "x": 1360, "y": 485 },
+    "sideY": 476,
     "sensorId": "nav-acu400"
   },
   {
@@ -117,6 +132,7 @@
     "name": "RVM400 소나 센서",
     "category": "navigation",
     "position": { "x": 1560, "y": 470 },
+    "sideY": 540,
     "sensorId": "nav-rvm400"
   },
   {
@@ -124,6 +140,7 @@
     "name": "Starlink",
     "category": "comms",
     "position": { "x": 1180, "y": 255 },
+    "sideY": 244,
     "sensorId": "comm-starlink"
   },
   {
@@ -131,6 +148,7 @@
     "name": "ICOM VHF",
     "category": "comms",
     "position": { "x": 980, "y": 260 },
+    "sideY": 396,
     "sensorId": "comm-vhf"
   },
   {
@@ -138,6 +156,7 @@
     "name": "AIS 700",
     "category": "comms",
     "position": { "x": 880, "y": 235 },
+    "sideY": 420,
     "sensorId": "comm-ais"
   },
   {
@@ -145,6 +164,7 @@
     "name": "EPIRB",
     "category": "safety",
     "position": { "x": 1090, "y": 225 },
+    "sideY": 350,
     "sensorId": "safe-epirb"
   },
   {
@@ -152,6 +172,7 @@
     "name": "바우 스러스터",
     "category": "other",
     "position": { "x": 1700, "y": 428 },
+    "sideY": 470,
     "sensorId": "misc-bowthruster"
   }
 ]

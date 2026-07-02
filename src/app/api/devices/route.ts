@@ -37,6 +37,8 @@ export async function POST(req: Request) {
     name: body.name!,
     category: body.category!,
     position: body.position!,
+    sideY: body.sideY,
+    labelOffset: body.labelOffset,
     sensorId: body.sensorId,
     config: body.config,
     notes: body.notes,

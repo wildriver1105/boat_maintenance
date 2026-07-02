@@ -10,6 +10,7 @@ import DevicePlacementForm, { type DraftDevice } from "./DevicePlacementForm";
 import {
   CATEGORY_META,
   STATUS_META,
+  type DeckView,
   type Device,
   type DeviceReading,
 } from "@/lib/types";
@@ -19,6 +20,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
   const [devices, setDevices] = useState<Device[]>([]);
   const [readings, setReadings] = useState<Record<string, DeviceReading>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = useState<DeckView>("top");
   const [editMode, setEditMode] = useState(false);
   const [showLabels, setShowLabels] = useState(true);
   const [panelOpen, setPanelOpen] = useState(true);
@@ -69,7 +71,17 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
 
   const handlePlace = (pos: { x: number; y: number }) => {
     setPending(pos);
-    setDraft({ name: "", category: "other", position: pos });
+    if (view === "top") {
+      setDraft({ name: "", category: "other", position: pos });
+    } else {
+      // 측면 뷰: x 는 선수-선미 위치로 공유, 클릭한 y 는 sideY(수직 위치)로 저장
+      setDraft({
+        name: "",
+        category: "other",
+        position: { x: pos.x, y: 425 },
+        sideY: pos.y,
+      });
+    }
   };
 
   const handleSave = async (d: DraftDevice) => {
@@ -104,6 +116,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
       name: d.name,
       category: d.category,
       position: d.position,
+      sideY: d.sideY,
       sensorId: d.sensorId,
       notes: d.notes,
     });
@@ -127,6 +140,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
           devices={devices}
           readings={readings}
           selectedId={selectedId}
+          view={view}
           editMode={editMode}
           showLabels={showLabels}
           pending={pending}
@@ -137,6 +151,11 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
 
       {/* 떠 있는 헤더 */}
       <Toolbar
+        view={view}
+        onViewChange={(v) => {
+          setView(v);
+          setPending(null);
+        }}
         editMode={editMode}
         onToggleEdit={() => {
           setEditMode((v) => !v);

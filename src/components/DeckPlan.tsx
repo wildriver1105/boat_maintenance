@@ -1,22 +1,29 @@
-// 도면 컨테이너 — SVG + 라벨 오버레이 + 디바이스 마커 + (편집 모드) 클릭 배치.
+// 도면 컨테이너 — 뷰(평면/좌현/우현) 전환 + 라벨 오버레이 + 디바이스 마커 + (편집 모드) 클릭 배치.
+// 세 뷰 모두 같은 viewBox(0 0 2000 850)를 공유: 평면은 device.position,
+// 측면은 x=position.x(선수-선미 방향 공유) + y=sideY(수직 위치)를 사용한다.
 "use client";
 
 import { useMemo, useRef } from "react";
 import DeckPlanSvg from "./DeckPlanSvg";
+import DeckPlanSideSvg from "./DeckPlanSideSvg";
 import DeviceMarker from "./DeviceMarker";
 import { layoutLabels } from "@/lib/labelLayout";
 import { summarize } from "@/lib/format";
 import {
   CATEGORY_META,
   STATUS_META,
+  type DeckView,
   type Device,
   type DeviceReading,
 } from "@/lib/types";
+
+const SIDE_DEFAULT_Y = 430; // sideY 미지정 시 측면 뷰 기본 높이
 
 type Props = {
   devices: Device[];
   readings: Record<string, DeviceReading>;
   selectedId: string | null;
+  view: DeckView;
   editMode: boolean;
   showLabels: boolean;
   pending: { x: number; y: number } | null;
@@ -28,6 +35,7 @@ export default function DeckPlan({
   devices,
   readings,
   selectedId,
+  view,
   editMode,
   showLabels,
   pending,
@@ -35,7 +43,30 @@ export default function DeckPlan({
   onPlace,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const labels = useMemo(() => layoutLabels(devices), [devices]);
+
+  // 현재 뷰에서의 디바이스 표시 좌표
+  const effectivePos = useMemo(() => {
+    const map: Record<string, { x: number; y: number }> = {};
+    for (const d of devices) {
+      map[d.id] =
+        view === "top"
+          ? d.position
+          : { x: d.position.x, y: d.sideY ?? SIDE_DEFAULT_Y };
+    }
+    return map;
+  }, [devices, view]);
+
+  const labels = useMemo(
+    () =>
+      layoutLabels(
+        devices.map((d) => ({
+          id: d.id,
+          ...effectivePos[d.id],
+          labelOffset: view === "top" ? d.labelOffset : undefined,
+        })),
+      ),
+    [devices, effectivePos, view],
+  );
 
   // 화면 클릭 좌표 → SVG viewBox 좌표
   const toSvgCoords = (clientX: number, clientY: number) => {
@@ -67,16 +98,21 @@ export default function DeckPlan({
         className={`h-full w-full ${editMode ? "cursor-crosshair" : ""}`}
         onClick={handleBackgroundClick}
         role="img"
-        aria-label="선박 평면 도면"
+        aria-label={view === "top" ? "선박 평면 도면" : "선박 측면 도면"}
       >
-        <DeckPlanSvg />
+        {view === "top" ? (
+          <DeckPlanSvg />
+        ) : (
+          <DeckPlanSideSvg side={view} />
+        )}
 
         {/* 라벨 + 리더 라인 (레퍼런스 스타일) */}
         {showLabels && (
           <g id="labels">
             {devices.map((d) => {
               const a = labels[d.id];
-              if (!a) return null;
+              const p = effectivePos[d.id];
+              if (!a || !p) return null;
               const cat = CATEGORY_META[d.category];
               const r = d.sensorId ? readings[d.sensorId] : undefined;
               const status = d.sensorId ? r?.status ?? "offline" : "offline";
@@ -91,8 +127,8 @@ export default function DeckPlan({
                   }}
                 >
                   <line
-                    x1={d.position.x}
-                    y1={d.position.y}
+                    x1={p.x}
+                    y1={p.y}
                     x2={a.x}
                     y2={a.y}
                     stroke={selected ? "#0ea5e9" : cat.accent}
@@ -138,6 +174,7 @@ export default function DeckPlan({
             <DeviceMarker
               key={d.id}
               device={d}
+              pos={effectivePos[d.id]}
               reading={d.sensorId ? readings[d.sensorId] : undefined}
               selected={selectedId === d.id}
               onSelect={onSelect}
@@ -159,6 +196,7 @@ export default function DeckPlan({
       {editMode && (
         <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-sky-600/90 px-4 py-1.5 text-sm font-medium text-white shadow">
           편집 모드 — 도면을 클릭해 부품을 배치하세요
+          {view !== "top" && " (측면 위치로 저장됩니다)"}
         </div>
       )}
     </div>
