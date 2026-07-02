@@ -2,8 +2,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import Toolbar from "./Toolbar";
 import DeckPlan from "./DeckPlan";
+
+// three.js 는 클라이언트 전용 — SSR 제외
+const Deck3D = dynamic(() => import("./Deck3D"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center text-sm text-slate-400">
+      3D 모델 로딩 중…
+    </div>
+  ),
+});
 import StatusLegend from "./StatusLegend";
 import DeviceDetailPanel from "./DeviceDetailPanel";
 import DevicePlacementForm, { type DraftDevice } from "./DevicePlacementForm";
@@ -136,17 +147,26 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
     <div className="relative h-screen w-screen overflow-hidden bg-slate-100">
       {/* 화면 전체를 덮는 도면 (배경) */}
       <div className="absolute inset-0">
-        <DeckPlan
-          devices={devices}
-          readings={readings}
-          selectedId={selectedId}
-          view={view}
-          editMode={editMode}
-          showLabels={showLabels}
-          pending={pending}
-          onSelect={handleSelect}
-          onPlace={handlePlace}
-        />
+        {view === "3d" ? (
+          <Deck3D
+            devices={devices}
+            readings={readings}
+            selectedId={selectedId}
+            onSelect={handleSelect}
+          />
+        ) : (
+          <DeckPlan
+            devices={devices}
+            readings={readings}
+            selectedId={selectedId}
+            view={view}
+            editMode={editMode}
+            showLabels={showLabels}
+            pending={pending}
+            onSelect={handleSelect}
+            onPlace={handlePlace}
+          />
+        )}
       </div>
 
       {/* 떠 있는 헤더 */}
@@ -155,6 +175,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
         onViewChange={(v) => {
           setView(v);
           setPending(null);
+          if (v === "3d") setEditMode(false); // 3D 에서는 배치 편집 없음 (2D 에서 배치)
         }}
         editMode={editMode}
         onToggleEdit={() => {

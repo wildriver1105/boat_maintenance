@@ -8,6 +8,7 @@ const VIEWS: { key: DeckView; label: string }[] = [
   { key: "top", label: "평면" },
   { key: "port", label: "좌현" },
   { key: "starboard", label: "우현" },
+  { key: "3d", label: "3D" },
 ];
 
 type Props = {
@@ -48,7 +49,7 @@ export default function Toolbar({
             ⛵ Oceanis Clipper 473
           </h1>
           <p className="text-[11px] text-slate-500">
-            부품 {deviceCount}개 · 2D 도면
+            부품 {deviceCount}개 · {view === "3d" ? "3D 뷰" : "2D 도면"}
           </p>
         </div>
 
@@ -79,27 +80,31 @@ export default function Toolbar({
           {connected ? source ?? "" : "대기"}
         </span>
 
-        <button
-          onClick={onToggleLabels}
-          className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-            showLabels
-              ? "bg-sky-100 text-sky-700"
-              : "text-slate-500 hover:bg-slate-100"
-          }`}
-        >
-          라벨
-        </button>
+        {view !== "3d" && (
+          <>
+            <button
+              onClick={onToggleLabels}
+              className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                showLabels
+                  ? "bg-sky-100 text-sky-700"
+                  : "text-slate-500 hover:bg-slate-100"
+              }`}
+            >
+              라벨
+            </button>
 
-        <button
-          onClick={onToggleEdit}
-          className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-            editMode
-              ? "bg-sky-600 text-white hover:bg-sky-700"
-              : "text-slate-600 hover:bg-slate-100"
-          }`}
-        >
-          {editMode ? "편집 종료" : "편집"}
-        </button>
+            <button
+              onClick={onToggleEdit}
+              className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                editMode
+                  ? "bg-sky-600 text-white hover:bg-sky-700"
+                  : "text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              {editMode ? "편집 종료" : "편집"}
+            </button>
+          </>
+        )}
 
         <button
           onClick={onTogglePanel}

@@ -23,7 +23,7 @@ type Props = {
   devices: Device[];
   readings: Record<string, DeviceReading>;
   selectedId: string | null;
-  view: DeckView;
+  view: Exclude<DeckView, "3d">; // 3D 는 Deck3D 가 담당
   editMode: boolean;
   showLabels: boolean;
   pending: { x: number; y: number } | null;
