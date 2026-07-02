@@ -12,7 +12,7 @@ export type LabelItem = {
   labelOffset?: { dx: number; dy: number };
 };
 
-const MIN_GAP = 150; // 라벨 간 최소 가로 간격 (viewBox 단위)
+const MIN_GAP = 125; // 라벨 간 최소 가로 간격 (viewBox 단위, 상/하 레벨 교차 기준)
 const X_MIN = 90;
 const X_MAX = 1910;
 
@@ -22,12 +22,20 @@ function placeRow(
   out: Record<string, LabelAnchor>,
 ) {
   const sorted = [...list].sort((a, b) => a.x - b.x);
+  const xs: number[] = [];
+  // 전진 패스: 왼쪽부터 최소 간격 확보
   let lastX = -Infinity;
-  sorted.forEach((d, i) => {
-    let x = Math.max(d.x, lastX + MIN_GAP);
-    x = Math.min(Math.max(x, X_MIN), X_MAX);
+  for (const d of sorted) {
+    const x = Math.min(Math.max(Math.max(d.x, lastX + MIN_GAP), X_MIN), X_MAX);
+    xs.push(x);
     lastX = x;
-    out[d.id] = { x, y: yLevels[i % yLevels.length] };
+  }
+  // 후진 패스: 오른쪽 경계에 몰린 라벨을 왼쪽으로 재분배
+  for (let i = xs.length - 2; i >= 0; i--) {
+    xs[i] = Math.max(Math.min(xs[i], xs[i + 1] - MIN_GAP), X_MIN);
+  }
+  sorted.forEach((d, i) => {
+    out[d.id] = { x: xs[i], y: yLevels[i % yLevels.length] };
   });
 }
 
