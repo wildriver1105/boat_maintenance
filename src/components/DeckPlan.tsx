@@ -44,16 +44,21 @@ export default function DeckPlan({
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // 현재 뷰에서의 디바이스 표시 좌표
+  // 좌현 뷰는 반대편에서 보므로 좌우 반전 (뱃머리 왼쪽)
+  const mirror = view === "port";
+  const flipX = (x: number) => (mirror ? 2000 - x : x);
+
+  // 현재 뷰에서의 디바이스 표시 좌표 (측면은 x=종방향 공유+미러, y=sideY)
   const effectivePos = useMemo(() => {
     const map: Record<string, { x: number; y: number }> = {};
     for (const d of devices) {
       map[d.id] =
         view === "top"
           ? d.position
-          : { x: d.position.x, y: d.sideY ?? SIDE_DEFAULT_Y };
+          : { x: flipX(d.position.x), y: d.sideY ?? SIDE_DEFAULT_Y };
     }
     return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [devices, view]);
 
   const labels = useMemo(
@@ -84,7 +89,7 @@ export default function DeckPlan({
   const handleBackgroundClick = (e: React.MouseEvent<SVGSVGElement>) => {
     if (editMode) {
       const pos = toSvgCoords(e.clientX, e.clientY);
-      if (pos) onPlace(pos);
+      if (pos) onPlace({ x: flipX(pos.x), y: pos.y }); // 미러 뷰면 정규 좌표로 되돌려 저장
     } else {
       onSelect(null);
     }
@@ -103,7 +108,7 @@ export default function DeckPlan({
         {view === "top" ? (
           <DeckPlanSvg />
         ) : (
-          <DeckPlanSideSvg side={view} />
+          <DeckPlanSideSvg side={view} mirror={mirror} />
         )}
 
         {/* 라벨 + 리더 라인 (레퍼런스 스타일) */}
@@ -182,9 +187,9 @@ export default function DeckPlan({
           ))}
         </g>
 
-        {/* 편집 모드에서 새 위치 미리보기 */}
+        {/* 편집 모드에서 새 위치 미리보기 (미러 뷰면 표시 좌표로 반전) */}
         {editMode && pending && (
-          <g transform={`translate(${pending.x} ${pending.y})`} pointerEvents="none">
+          <g transform={`translate(${flipX(pending.x)} ${pending.y})`} pointerEvents="none">
             <circle r={16} fill="rgba(14,165,233,0.2)" stroke="#0ea5e9" strokeWidth={3} strokeDasharray="4 4" />
             <text y={1} textAnchor="middle" dominantBaseline="central" fontSize={18} fill="#0ea5e9">
               +
