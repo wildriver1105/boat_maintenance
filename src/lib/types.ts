@@ -17,8 +17,8 @@ export type DeviceCategory =
 
 export type DeviceStatus = "ok" | "warning" | "alert" | "offline";
 
-/** 도면 뷰 — 평면(위) / 좌현 프로파일 / 우현 프로파일 */
-export type DeckView = "top" | "port" | "starboard";
+/** 도면 뷰 — 평면(위) / 좌현 프로파일 / 우현 프로파일 / 3D */
+export type DeckView = "top" | "port" | "starboard" | "3d";
 
 /** 도면 위 한 지점에 놓인 관리 대상 부품/기기 */
 export interface Device {
