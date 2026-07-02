@@ -40,9 +40,9 @@ function buildLoft(kind: "hull" | "deck"): THREE.BufferGeometry {
         const y = st.sheer + (st.bottom - st.sheer) * Math.pow(Math.sin(u * Math.PI), 0.85);
         verts.push(st.x, y, z);
       } else {
-        // 데크: 셰어라인 위 캠버(가운데가 살짝 볼록)
-        const z = -st.hb * 0.985 * Math.cos(u * Math.PI);
-        const y = st.sheer + 0.02 + 0.12 * (1 - Math.pow(2 * u - 1, 2));
+        // 데크: 건웨일 안쪽으로 들여서 헐 밖으로 오버행하지 않게 (0.92) + 살짝 낮춰 턱 아래로
+        const z = -st.hb * 0.92 * Math.cos(u * Math.PI);
+        const y = st.sheer - 0.04 + 0.12 * (1 - Math.pow(2 * u - 1, 2));
         verts.push(st.x, y, z);
       }
     }
@@ -112,13 +112,13 @@ const WOOD = { color: "#d9c6a5", roughness: 0.75 };
 function Interior() {
   return (
     <group>
-      {/* 캐빈 솔 */}
+      {/* 캐빈 솔 (헐 폭 안쪽으로 유지) */}
       {[
-        [-6.3, 3.9, 2.95],
-        [-2.65, 3.5, 3.35],
-        [0.65, 3.3, 3.2],
-        [4.6, 4.6, 2.6],
-        [7.5, 1.2, 1.4],
+        [-6.3, 3.7, 2.7],
+        [-2.65, 3.5, 3.2],
+        [0.65, 3.3, 3.0],
+        [4.5, 3.8, 2.0],
+        [7.2, 1.0, 0.8],
       ].map(([x, w, d], i) => (
         <mesh key={i} position={[x, -0.31, 0]} receiveShadow>
           <boxGeometry args={[w, 0.05, d]} />
@@ -143,14 +143,14 @@ function Interior() {
         <meshStandardMaterial {...FURN} />
       </mesh>
 
-      {/* 후방 좌현: 더블 베드 + 베개 */}
-      <RoundedBox args={[3.2, 0.35, 1.35]} radius={0.06} position={[-6.3, -0.1, -1.35]} castShadow>
+      {/* 후방 좌현: 더블 베드 + 베개 (헐 안쪽으로 축소) */}
+      <RoundedBox args={[2.7, 0.32, 1.05]} radius={0.06} position={[-6.05, -0.12, -1.05]} castShadow>
         <meshStandardMaterial {...WHITE} />
       </RoundedBox>
-      <RoundedBox args={[0.5, 0.13, 0.55]} radius={0.05} position={[-7.55, 0.12, -1.62]}>
+      <RoundedBox args={[0.45, 0.12, 0.5]} radius={0.05} position={[-6.95, -0.02, -1.28]}>
         <meshStandardMaterial color="#f8fafc" />
       </RoundedBox>
-      <RoundedBox args={[0.5, 0.13, 0.55]} radius={0.05} position={[-7.55, 0.12, -1.02]}>
+      <RoundedBox args={[0.45, 0.12, 0.5]} radius={0.05} position={[-6.95, -0.02, -0.78]}>
         <meshStandardMaterial color="#f8fafc" />
       </RoundedBox>
 
@@ -234,18 +234,18 @@ function Interior() {
         <meshStandardMaterial {...WHITE} />
       </mesh>
 
-      {/* 오너 선실: 아일랜드 베드 + 베개 + 사이드 벤치 */}
-      <RoundedBox args={[3.4, 0.4, 2.1]} radius={0.1} position={[4.85, -0.1, 0]} castShadow>
+      {/* 오너 선실: 아일랜드 베드 + 베개 + 사이드 벤치 (헐 안쪽으로 축소) */}
+      <RoundedBox args={[3.0, 0.38, 1.7]} radius={0.1} position={[4.65, -0.1, 0]} castShadow>
         <meshStandardMaterial {...WHITE} />
       </RoundedBox>
-      <RoundedBox args={[0.55, 0.14, 0.7]} radius={0.05} position={[6.25, 0.15, -0.5]}>
+      <RoundedBox args={[0.5, 0.14, 0.55]} radius={0.05} position={[5.85, 0.14, -0.42]}>
         <meshStandardMaterial color="#f8fafc" />
       </RoundedBox>
-      <RoundedBox args={[0.55, 0.14, 0.7]} radius={0.05} position={[6.25, 0.15, 0.5]}>
+      <RoundedBox args={[0.5, 0.14, 0.55]} radius={0.05} position={[5.85, 0.14, 0.42]}>
         <meshStandardMaterial color="#f8fafc" />
       </RoundedBox>
-      <mesh position={[3.35, -0.05, -1.5]}>
-        <boxGeometry args={[1.1, 0.5, 0.5]} />
+      <mesh position={[3.35, -0.05, -1.35]}>
+        <boxGeometry args={[1.1, 0.5, 0.45]} />
         <meshStandardMaterial {...FURN} />
       </mesh>
     </group>
