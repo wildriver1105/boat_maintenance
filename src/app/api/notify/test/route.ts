@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getChannel } from "@/lib/notifications";
+import { enabledUserKeys } from "@/lib/notifications/recipients";
 import type { NotifyPriority } from "@/lib/notifications/types";
 
 export const runtime = "nodejs";
@@ -19,6 +20,7 @@ export async function GET() {
   return NextResponse.json({
     channel: channel.name,
     configured: channel.configured,
+    recipientCount: (await enabledUserKeys()).length,
     monitor: process.env.ALERT_MONITOR === "on",
     monitorLevel: process.env.ALERT_MONITOR_LEVEL ?? "alert",
   });

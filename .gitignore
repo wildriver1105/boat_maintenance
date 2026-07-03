@@ -40,6 +40,9 @@ yarn-error.log*
 # procedure run records (runtime audit data)
 /data/procedure-runs.json
 
+# notification recipients (contains Pushover user keys)
+/data/notify-recipients.json
+
 # vercel
 .vercel
 
