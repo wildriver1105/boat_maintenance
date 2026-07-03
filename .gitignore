@@ -37,6 +37,9 @@ yarn-error.log*
 # user accounts (contains password hashes — do not commit)
 /data/users.json
 
+# procedure run records (runtime audit data)
+/data/procedure-runs.json
+
 # vercel
 .vercel
 

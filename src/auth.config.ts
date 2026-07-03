@@ -18,8 +18,13 @@ export const authConfig = {
       return token;
     },
     session({ session, token }) {
-      if (session.user && typeof token.role === "string") {
-        (session.user as { role?: string }).role = token.role;
+      if (session.user) {
+        if (typeof token.role === "string") {
+          (session.user as { role?: string }).role = token.role;
+        }
+        if (typeof token.sub === "string") {
+          (session.user as { id?: string }).id = token.sub;
+        }
       }
       return session;
     },
