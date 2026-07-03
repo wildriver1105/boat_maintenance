@@ -54,12 +54,18 @@ async function tick(): Promise<void> {
       if (prev === undefined) continue;
       if (!crossedUp) continue;
 
-      const priority = status === "alert" ? "emergency" : "high";
+      const isAlert = status === "alert";
       const base = process.env.APP_BASE_URL;
       await channel.send({
-        title: `${status === "alert" ? "🔴 경고" : "🟠 주의"} · ${d.name}`,
+        title: `${isAlert ? "🚨 경고" : "🟠 주의"} · ${d.name}`,
         message: `${d.name} 상태가 ${STATUS_META[status].label}로 전환됨 — ${summarize(d, reading)}`,
-        priority,
+        // 경고(alert) = 긴급 + 사이렌 + 확인할 때까지 반복 / 주의(warning) = 높음(경고음)
+        priority: isAlert ? "emergency" : "high",
+        sound: isAlert
+          ? process.env.ALERT_SOUND ?? "siren"
+          : process.env.WARN_SOUND || undefined,
+        retrySec: isAlert ? Number(process.env.ALERT_RETRY ?? 30) : undefined,
+        expireSec: isAlert ? Number(process.env.ALERT_EXPIRE ?? 600) : undefined,
         url: base ? `${base}/` : undefined,
         urlTitle: base ? "도면 열기" : undefined,
       });

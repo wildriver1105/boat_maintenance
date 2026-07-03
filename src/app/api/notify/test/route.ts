@@ -36,12 +36,19 @@ export async function POST(req: Request) {
     priority?: NotifyPriority;
   };
 
+  const priority = body.priority ?? "normal";
+  // 긴급 테스트는 실제 경고처럼 사이렌+반복 (단, 테스트라 만료를 짧게 120초)
+  const isEmergency = priority === "emergency";
+
   const result = await getChannel().send({
     title: body.title ?? "⛵ 테스트 알림",
     message:
       body.message ??
       "Oceanis Clipper 473 유지보수 디스플레이 · 푸시 알림 연결 테스트입니다.",
-    priority: body.priority ?? "normal",
+    priority,
+    sound: isEmergency ? (process.env.ALERT_SOUND ?? "siren") : undefined,
+    retrySec: isEmergency ? 30 : undefined,
+    expireSec: isEmergency ? 120 : undefined,
   });
 
   return NextResponse.json(result, { status: result.ok ? 200 : 502 });

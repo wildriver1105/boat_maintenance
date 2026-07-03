@@ -5,6 +5,11 @@ export interface NotifyMessage {
   title: string;
   message: string;
   priority?: NotifyPriority;
+  /** 알림 사운드 (Pushover 사운드명, 예: "siren") */
+  sound?: string;
+  /** emergency(긴급) 전용: 재전송 주기(초, 최소 30) / 만료(초) */
+  retrySec?: number;
+  expireSec?: number;
   /** 알림에서 열 링크 (예: 해당 장비 도면) */
   url?: string;
   urlTitle?: string;

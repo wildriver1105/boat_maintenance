@@ -35,11 +35,13 @@ export class PushoverChannel implements NotificationChannel {
       message: msg.message,
       priority: String(prio),
     });
+    if (msg.sound) body.set("sound", msg.sound);
     if (msg.url) body.set("url", msg.url);
     if (msg.urlTitle) body.set("url_title", msg.urlTitle);
     if (prio === 2) {
-      body.set("retry", "60");
-      body.set("expire", "3600");
+      // Pushover 긴급: 재전송 주기(최소 30초)·만료 필수
+      body.set("retry", String(Math.max(30, msg.retrySec ?? 60)));
+      body.set("expire", String(msg.expireSec ?? 3600));
     }
     try {
       const res = await fetch("https://api.pushover.net/1/messages.json", {
