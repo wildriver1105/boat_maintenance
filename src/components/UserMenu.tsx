@@ -25,12 +25,20 @@ export default function UserMenu() {
         </div>
       </div>
       {isAdmin && (
-        <Link
-          href="/admin/users"
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          크루 관리
-        </Link>
+        <>
+          <Link
+            href="/admin/notifications"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            🔔 알림
+          </Link>
+          <Link
+            href="/admin/users"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            크루 관리
+          </Link>
+        </>
       )}
       <button
         onClick={() => signOut({ callbackUrl: "/login" })}
