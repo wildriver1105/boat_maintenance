@@ -1,8 +1,6 @@
 // 프로시저(체크리스트) 모드 도메인 타입.
-// 항해 전/중/후 절차를 크루가 수행하고, 각 항목을 누가 언제 체크했는지 기록해
-// 책임 추적(감사)이 가능하게 한다.
-
-export type ProcedurePhase = "pre" | "during" | "post";
+// 임의 개수의 체크리스트(템플릿)를 id 로 관리하고, 각 실행(run)에서 항목을
+// 누가 언제 체크/완료했는지 기록해 책임 추적(감사)이 가능하게 한다.
 
 export interface ChecklistItem {
   id: string;
@@ -15,8 +13,14 @@ export interface ChecklistItem {
 }
 
 export interface ProcedureTemplate {
-  phase: ProcedurePhase;
+  id: string;
   title: string;
+  /** 분류 라벨 (예: "승선 · 정박") */
+  category?: string;
+  icon?: string;
+  color?: string;
+  /** 정렬 순서 */
+  order?: number;
   items: ChecklistItem[];
 }
 
@@ -29,25 +33,19 @@ export interface CheckRecord {
   note?: string;
 }
 
-/** 절차 1회 수행 인스턴스 */
+/** 절차 1회 수행(실행) 인스턴스 = 실행 완료 로그 */
 export interface ProcedureRun {
   id: string;
-  phase: ProcedurePhase;
+  templateId: string;
   title: string;
+  category?: string;
   startedBy: string;
   startedByName: string;
   startedAt: string; // ISO
   completedAt?: string; // ISO
+  completedBy?: string;
+  completedByName?: string;
   checks: CheckRecord[];
 }
 
-export const PHASE_META: Record<
-  ProcedurePhase,
-  { label: string; short: string; icon: string; color: string }
-> = {
-  pre: { label: "항해 전", short: "출항 준비", icon: "⚓", color: "#0ea5e9" },
-  during: { label: "항해 중", short: "운항 점검", icon: "🧭", color: "#6366f1" },
-  post: { label: "항해 후", short: "입항 정리", icon: "🏁", color: "#10b981" },
-};
-
-export const PHASE_ORDER: ProcedurePhase[] = ["pre", "during", "post"];
+export const DEFAULT_COLOR = "#0ea5e9";

@@ -1,7 +1,9 @@
-// 단일 수행 기록 조회 / 항목 체크·메모·완료
+// 단일 실행 로그 — 조회 / 항목 체크·메모·완료 / 삭제(관리자)
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import {
   completeRun,
+  deleteRun,
   getRun,
   setNote,
   toggleCheck,
@@ -11,20 +13,14 @@ import { actingUser } from "@/lib/procedures/session";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  _req: Request,
-  ctx: { params: Promise<{ id: string }> },
-) {
+export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const run = await getRun(id);
   if (!run) return NextResponse.json({ error: "not found" }, { status: 404 });
   return NextResponse.json(run);
 }
 
-export async function PATCH(
-  req: Request,
-  ctx: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const user = await actingUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -42,11 +38,21 @@ export async function PATCH(
   } else if (body.action === "note" && body.itemId) {
     run = await setNote(id, body.itemId, body.note ?? "");
   } else if (body.action === "complete") {
-    run = await completeRun(id, now);
+    run = await completeRun(id, user, now);
   } else {
     return NextResponse.json({ error: "invalid action" }, { status: 400 });
   }
 
   if (!run) return NextResponse.json({ error: "not found" }, { status: 404 });
   return NextResponse.json(run);
+}
+
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (session?.user?.role !== "admin")
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const { id } = await ctx.params;
+  const ok = await deleteRun(id);
+  if (!ok) return NextResponse.json({ error: "not found" }, { status: 404 });
+  return NextResponse.json({ ok: true });
 }

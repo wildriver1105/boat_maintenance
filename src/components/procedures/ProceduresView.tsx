@@ -1,23 +1,20 @@
-// 프로시저 모드 — 항해 전/중/후 체크리스트 수행 + 감사 기록(누가·언제 체크).
+// 프로시저 모드 — 임의 개수의 체크리스트 수행 + 감사 기록(누가·언제 체크/완료).
+// 관리자는 "관리" 모드에서 체크리스트/항목을 CRUD 할 수 있다.
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import {
-  PHASE_META,
-  PHASE_ORDER,
-  type ChecklistItem,
-  type ProcedurePhase,
-  type ProcedureRun,
-  type ProcedureTemplate,
+import type {
+  ChecklistItem,
+  ProcedureRun,
+  ProcedureTemplate,
 } from "@/lib/procedures/types";
 import type { Device, DeviceReading } from "@/lib/types";
 import DeviceChip from "./DeviceChip";
 
 function fmt(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString("ko-KR", {
+  return new Date(iso).toLocaleString("ko-KR", {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -27,25 +24,32 @@ function fmt(iso: string): string {
 
 export default function ProceduresView() {
   const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
+
   const [templates, setTemplates] = useState<ProcedureTemplate[]>([]);
   const [runs, setRuns] = useState<ProcedureRun[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [readings, setReadings] = useState<Record<string, DeviceReading>>({});
-  const [phase, setPhase] = useState<ProcedurePhase>("pre");
-  const [busy, setBusy] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [manage, setManage] = useState(false);
 
+  const loadTemplates = useCallback(async () => {
+    const t = (await (await fetch("/api/procedures")).json()) as ProcedureTemplate[];
+    setTemplates(t);
+    setSelectedId((cur) => cur ?? t[0]?.id ?? null);
+    return t;
+  }, []);
   const loadRuns = useCallback(async () => {
     const r = await fetch("/api/procedures/runs");
     if (r.ok) setRuns(await r.json());
   }, []);
 
   useEffect(() => {
-    fetch("/api/procedures").then((r) => r.json()).then(setTemplates);
-    fetch("/api/devices").then((r) => r.json()).then(setDevices);
+    void loadTemplates();
     void loadRuns();
-  }, [loadRuns]);
+    fetch("/api/devices").then((r) => r.json()).then(setDevices);
+  }, [loadTemplates, loadRuns]);
 
-  // 연결 장비 실시간 상태
   useEffect(() => {
     const es = new EventSource("/api/telemetry");
     es.addEventListener("telemetry", (e) => {
@@ -59,25 +63,23 @@ export default function ProceduresView() {
     return () => es.close();
   }, []);
 
-  const template = templates.find((t) => t.phase === phase);
-  const activeRun = runs.find((r) => r.phase === phase && !r.completedAt) ?? null;
-  const history = runs.filter((r) => r.phase === phase && r.completedAt);
+  const selected = templates.find((t) => t.id === selectedId) ?? null;
+  const activeRun = runs.find((r) => r.templateId === selectedId && !r.completedAt) ?? null;
+  const history = runs.filter((r) => r.templateId === selectedId && r.completedAt);
   const deviceById = useMemo(
     () => Object.fromEntries(devices.map((d) => [d.id, d])),
     [devices],
   );
 
   const start = async () => {
-    setBusy(true);
+    if (!selectedId) return;
     await fetch("/api/procedures/runs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phase }),
+      body: JSON.stringify({ templateId: selectedId }),
     });
     await loadRuns();
-    setBusy(false);
   };
-
   const patch = async (runId: string, body: Record<string, unknown>) => {
     await fetch(`/api/procedures/runs/${runId}`, {
       method: "PATCH",
@@ -86,24 +88,68 @@ export default function ProceduresView() {
     });
     await loadRuns();
   };
+  const removeRun = async (runId: string) => {
+    await fetch(`/api/procedures/runs/${runId}`, { method: "DELETE" });
+    await loadRuns();
+  };
+
+  // 템플릿 CRUD
+  const createTemplate = async () => {
+    const t = (await (
+      await fetch("/api/procedures", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "새 체크리스트", icon: "📋", items: [] }),
+      })
+    ).json()) as ProcedureTemplate;
+    await loadTemplates();
+    setSelectedId(t.id);
+  };
+  const saveTemplate = async (id: string, patchBody: Partial<ProcedureTemplate>) => {
+    await fetch(`/api/procedures/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patchBody),
+    });
+    await loadTemplates();
+  };
+  const removeTemplate = async (id: string) => {
+    await fetch(`/api/procedures/${id}`, { method: "DELETE" });
+    const t = await loadTemplates();
+    setSelectedId(t[0]?.id ?? null);
+    setManage(false);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* 헤더 */}
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
           <div>
             <h1 className="text-lg font-semibold text-slate-800">✅ 프로시저 · 체크리스트</h1>
-            <p className="text-xs text-slate-400">항해 전·중·후 절차 · 체크 기록은 자동 저장됩니다</p>
+            <p className="text-xs text-slate-400">
+              체크·완료 기록은 자동 저장됩니다 (누가·언제)
+            </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {session?.user && (
-              <span className="text-sm text-slate-500">
+              <span className="hidden text-sm text-slate-500 sm:inline">
                 {session.user.name}
                 <span className="ml-1 text-xs text-slate-400">
-                  ({session.user.role === "admin" ? "관리자" : "크루"})
+                  ({isAdmin ? "관리자" : "크루"})
                 </span>
               </span>
+            )}
+            {isAdmin && (
+              <button
+                onClick={() => setManage((v) => !v)}
+                className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                  manage
+                    ? "border-sky-600 bg-sky-600 text-white"
+                    : "border-slate-300 text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                관리
+              </button>
             )}
             <Link href="/" className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
               도면으로
@@ -113,39 +159,49 @@ export default function ProceduresView() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-6">
-        {/* 단계 탭 */}
-        <div className="flex gap-2">
-          {PHASE_ORDER.map((p) => {
-            const m = PHASE_META[p];
-            const on = phase === p;
-            const active = runs.some((r) => r.phase === p && !r.completedAt);
+        {/* 체크리스트 탭 */}
+        <div className="flex flex-wrap gap-2">
+          {templates.map((t) => {
+            const on = selectedId === t.id;
+            const active = runs.some((r) => r.templateId === t.id && !r.completedAt);
             return (
               <button
-                key={p}
-                onClick={() => setPhase(p)}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition-colors ${
-                  on
-                    ? "border-transparent text-white"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                key={t.id}
+                onClick={() => setSelectedId(t.id)}
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${
+                  on ? "border-transparent text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                 }`}
-                style={on ? { background: m.color } : undefined}
+                style={on ? { background: t.color ?? "#0ea5e9" } : undefined}
               >
-                <span className="text-base">{m.icon}</span>
-                {m.label}
-                {active && (
-                  <span className={`h-2 w-2 rounded-full ${on ? "bg-white" : "bg-emerald-500"}`} />
-                )}
+                <span className="text-base">{t.icon ?? "📋"}</span>
+                {t.title}
+                {active && <span className={`h-2 w-2 rounded-full ${on ? "bg-white" : "bg-emerald-500"}`} />}
               </button>
             );
           })}
+          {isAdmin && manage && (
+            <button
+              onClick={createTemplate}
+              className="rounded-xl border border-dashed border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-50"
+            >
+              + 새 체크리스트
+            </button>
+          )}
         </div>
 
-        {/* 본문 */}
         <div className="mt-5">
-          {activeRun ? (
+          {manage && isAdmin && selected ? (
+            <TemplateEditor
+              key={selected.id}
+              template={selected}
+              devices={devices}
+              onSave={(patchBody) => saveTemplate(selected.id, patchBody)}
+              onDelete={() => removeTemplate(selected.id)}
+            />
+          ) : activeRun ? (
             <RunCard
               run={activeRun}
-              template={template}
+              template={selected ?? undefined}
               deviceById={deviceById}
               readings={readings}
               onCheck={(itemId, checked) => patch(activeRun.id, { action: "check", itemId, checked })}
@@ -153,19 +209,22 @@ export default function ProceduresView() {
               onComplete={() => patch(activeRun.id, { action: "complete" })}
             />
           ) : (
-            <StartCard template={template} phase={phase} busy={busy} onStart={start} />
+            <StartCard template={selected ?? undefined} onStart={start} />
           )}
         </div>
 
-        {/* 기록 */}
-        {history.length > 0 && (
+        {!manage && history.length > 0 && (
           <section className="mt-8">
-            <h2 className="mb-2 text-sm font-semibold text-slate-500">
-              지난 기록 · {PHASE_META[phase].label}
-            </h2>
+            <h2 className="mb-2 text-sm font-semibold text-slate-500">지난 실행 기록</h2>
             <div className="space-y-2">
               {history.map((r) => (
-                <HistoryRow key={r.id} run={r} template={template} />
+                <HistoryRow
+                  key={r.id}
+                  run={r}
+                  template={selected ?? undefined}
+                  canDelete={isAdmin}
+                  onDelete={() => removeRun(r.id)}
+                />
               ))}
             </div>
           </section>
@@ -176,30 +235,25 @@ export default function ProceduresView() {
 }
 
 /* ---------- 시작 카드 ---------- */
-function StartCard({
-  template,
-  phase,
-  busy,
-  onStart,
-}: {
-  template?: ProcedureTemplate;
-  phase: ProcedurePhase;
-  busy: boolean;
-  onStart: () => void;
-}) {
-  const m = PHASE_META[phase];
+function StartCard({ template, onStart }: { template?: ProcedureTemplate; onStart: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const color = template?.color ?? "#0ea5e9";
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
-      <div className="text-3xl">{m.icon}</div>
-      <h2 className="mt-2 text-base font-semibold text-slate-800">{template?.title ?? m.label}</h2>
+      <div className="text-3xl">{template?.icon ?? "📋"}</div>
+      <h2 className="mt-2 text-base font-semibold text-slate-800">{template?.title ?? "체크리스트"}</h2>
       <p className="mt-1 text-sm text-slate-500">
         점검 항목 {template?.items.length ?? 0}개 · 진행 중인 점검이 없습니다.
       </p>
       <button
-        onClick={onStart}
+        onClick={async () => {
+          setBusy(true);
+          await onStart();
+          setBusy(false);
+        }}
         disabled={busy}
         className="mt-4 rounded-xl px-5 py-2.5 text-sm font-medium text-white disabled:opacity-60"
-        style={{ background: m.color }}
+        style={{ background: color }}
       >
         {busy ? "시작 중…" : "새 점검 시작"}
       </button>
@@ -231,7 +285,7 @@ function RunCard({
   const doneRequired = required.filter((i) => checkOf(i.id)).length;
   const doneAll = items.filter((i) => checkOf(i.id)).length;
   const allRequiredDone = doneRequired === required.length;
-  const m = PHASE_META[run.phase];
+  const color = template?.color ?? "#0ea5e9";
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -242,17 +296,13 @@ function RunCard({
             {run.startedByName} 시작 · {fmt(run.startedAt)}
           </p>
         </div>
-        <span className="text-sm font-medium" style={{ color: m.color }}>
+        <span className="text-sm font-medium" style={{ color }}>
           {doneAll}/{items.length}
         </span>
       </div>
 
-      {/* 진행 바 */}
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-        <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${items.length ? (doneAll / items.length) * 100 : 0}%`, background: m.color }}
-        />
+        <div className="h-full rounded-full transition-all" style={{ width: `${items.length ? (doneAll / items.length) * 100 : 0}%`, background: color }} />
       </div>
 
       <ul className="mt-4 divide-y divide-slate-100">
@@ -275,9 +325,7 @@ function RunCard({
 
       <div className="mt-5 flex items-center justify-between">
         <span className="text-xs text-slate-400">
-          {allRequiredDone
-            ? "필수 항목 완료 — 점검을 마칠 수 있습니다."
-            : `필수 ${required.length - doneRequired}개 남음`}
+          {allRequiredDone ? "필수 항목 완료 — 점검을 마칠 수 있습니다." : `필수 ${required.length - doneRequired}개 남음`}
         </span>
         <button
           onClick={onComplete}
@@ -291,7 +339,7 @@ function RunCard({
   );
 }
 
-/* ---------- 항목 행 ---------- */
+/* ---------- 항목 행 (실행) ---------- */
 function ItemRow({
   item,
   check,
@@ -317,14 +365,11 @@ function ItemRow({
         onClick={() => onToggle(!checked)}
         aria-label={checked ? "체크 해제" : "체크"}
         className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 text-sm transition-colors ${
-          checked
-            ? "border-emerald-500 bg-emerald-500 text-white"
-            : "border-slate-300 text-transparent hover:border-slate-400"
+          checked ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-transparent hover:border-slate-400"
         }`}
       >
         ✓
       </button>
-
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className={`text-sm font-medium ${checked ? "text-slate-400 line-through" : "text-slate-800"}`}>
@@ -334,7 +379,6 @@ function ItemRow({
           <DeviceChip device={device} reading={reading} />
         </div>
         {item.detail && <p className="mt-0.5 text-xs text-slate-400">{item.detail}</p>}
-
         {checked && check && (
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
@@ -344,9 +388,7 @@ function ItemRow({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               onBlur={() => note !== (check.note ?? "") && onNote(note)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-              }}
+              onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
               placeholder="메모 추가…"
               className="min-w-0 flex-1 rounded-md border border-slate-200 px-2 py-1 text-xs outline-none focus:border-sky-400"
             />
@@ -357,26 +399,40 @@ function ItemRow({
   );
 }
 
-/* ---------- 지난 기록 행 ---------- */
-function HistoryRow({ run, template }: { run: ProcedureRun; template?: ProcedureTemplate }) {
+/* ---------- 지난 실행 기록 ---------- */
+function HistoryRow({
+  run,
+  template,
+  canDelete,
+  onDelete,
+}: {
+  run: ProcedureRun;
+  template?: ProcedureTemplate;
+  canDelete: boolean;
+  onDelete: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const items = template?.items ?? [];
   return (
     <div className="rounded-xl border border-slate-200 bg-white">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left"
-      >
-        <div>
+      <div className="flex items-center justify-between px-4 py-3">
+        <button onClick={() => setOpen((v) => !v)} className="flex-1 text-left">
           <div className="text-sm font-medium text-slate-700">
             {run.completedAt ? fmt(run.completedAt) : fmt(run.startedAt)} 완료
           </div>
           <div className="text-xs text-slate-400">
-            {run.startedByName} 시작 · 체크 {run.checks.length}개
+            완료: {run.completedByName ?? run.startedByName} · 체크 {run.checks.length}개
           </div>
-        </div>
-        <span className="text-slate-400">{open ? "▲" : "▼"}</span>
-      </button>
+        </button>
+        {canDelete && (
+          <button onClick={onDelete} className="ml-2 text-xs font-medium text-red-600 hover:underline">
+            삭제
+          </button>
+        )}
+        <button onClick={() => setOpen((v) => !v)} className="ml-2 text-slate-400">
+          {open ? "▲" : "▼"}
+        </button>
+      </div>
       {open && (
         <ul className="border-t border-slate-100 px-4 py-2 text-sm">
           {items.map((item) => {
@@ -397,6 +453,140 @@ function HistoryRow({ run, template }: { run: ProcedureRun; template?: Procedure
           })}
         </ul>
       )}
+    </div>
+  );
+}
+
+/* ---------- 템플릿 편집 (관리자) ---------- */
+let tmpCounter = 0;
+function TemplateEditor({
+  template,
+  devices,
+  onSave,
+  onDelete,
+}: {
+  template: ProcedureTemplate;
+  devices: Device[];
+  onSave: (patch: Partial<ProcedureTemplate>) => Promise<void>;
+  onDelete: () => void;
+}) {
+  const [title, setTitle] = useState(template.title);
+  const [category, setCategory] = useState(template.category ?? "");
+  const [icon, setIcon] = useState(template.icon ?? "📋");
+  const [items, setItems] = useState<ChecklistItem[]>(template.items);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const idsRef = useRef<Map<ChecklistItem, string>>(new Map());
+
+  const keyOf = (it: ChecklistItem) => {
+    if (it.id) return it.id;
+    let k = idsRef.current.get(it);
+    if (!k) {
+      k = `tmp-${tmpCounter++}`;
+      idsRef.current.set(it, k);
+    }
+    return k;
+  };
+
+  const update = (i: number, patch: Partial<ChecklistItem>) =>
+    setItems((arr) => arr.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
+  const remove = (i: number) => setItems((arr) => arr.filter((_, idx) => idx !== i));
+  const add = () => setItems((arr) => [...arr, { id: "", label: "" }]);
+
+  const save = async () => {
+    setSaving(true);
+    setSaved(false);
+    await onSave({
+      title,
+      category: category || undefined,
+      icon,
+      items: items
+        .filter((it) => it.label.trim())
+        .map((it) => ({
+          id: it.id && !it.id.startsWith("tmp-") ? it.id : "",
+          label: it.label,
+          detail: it.detail,
+          deviceId: it.deviceId,
+          required: it.required,
+        })),
+    });
+    setSaving(false);
+    setSaved(true);
+  };
+
+  return (
+    <div className="rounded-2xl border border-sky-200 bg-white p-5">
+      <div className="flex items-center gap-2">
+        <input
+          value={icon}
+          onChange={(e) => setIcon(e.target.value)}
+          className="w-12 rounded-lg border border-slate-300 px-2 py-2 text-center text-lg outline-none focus:border-sky-500"
+        />
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="체크리스트 이름"
+          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium outline-none focus:border-sky-500"
+        />
+      </div>
+      <input
+        value={category}
+        onChange={(e) => setCategory(e.target.value)}
+        placeholder="분류 (예: 승선 · 정박)"
+        className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500"
+      />
+
+      <ul className="mt-4 space-y-2">
+        {items.map((it, i) => (
+          <li key={keyOf(it)} className="rounded-lg border border-slate-200 p-2">
+            <div className="flex items-center gap-2">
+              <input
+                value={it.label}
+                onChange={(e) => update(i, { label: e.target.value })}
+                placeholder="항목 내용"
+                className="flex-1 rounded-md border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-sky-400"
+              />
+              <button onClick={() => remove(i)} className="px-1.5 text-slate-400 hover:text-red-600" aria-label="삭제">
+                ✕
+              </button>
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-1 text-xs text-slate-500">
+                <input type="checkbox" checked={!!it.required} onChange={(e) => update(i, { required: e.target.checked })} className="accent-rose-500" />
+                필수
+              </label>
+              <select
+                value={it.deviceId ?? ""}
+                onChange={(e) => update(i, { deviceId: e.target.value || undefined })}
+                className="rounded-md border border-slate-200 px-2 py-1 text-xs outline-none focus:border-sky-400"
+              >
+                <option value="">장비 연결 없음</option>
+                {devices.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <button onClick={add} className="mt-2 rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-50">
+        + 항목 추가
+      </button>
+
+      <div className="mt-5 flex items-center justify-between">
+        <button onClick={onDelete} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
+          체크리스트 삭제
+        </button>
+        <div className="flex items-center gap-2">
+          {saved && <span className="text-xs text-emerald-600">저장됨</span>}
+          <button onClick={save} disabled={saving} className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-60">
+            {saving ? "저장 중…" : "저장"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

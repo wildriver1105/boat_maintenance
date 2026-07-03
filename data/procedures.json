@@ -1,145 +1,254 @@
 [
   {
-    "phase": "pre",
-    "title": "출항 전 점검",
+    "id": "board-dock",
+    "title": "승선 · 정박 준비",
+    "category": "승선 · 정박",
+    "icon": "⚓",
+    "color": "#0ea5e9",
+    "order": 1,
     "items": [
       {
-        "id": "pre-weather",
-        "label": "기상·해상 예보 확인",
-        "detail": "풍향/풍속, 조석, 파고",
+        "id": "bd-1",
+        "label": "데크슈즈 착용, 신발 보관"
+      },
+      {
+        "id": "bd-2",
+        "label": "문 열기",
+        "detail": "계단 옆에 문과 열쇠 보관"
+      },
+      {
+        "id": "bd-3",
+        "label": "전기 메인 스위치 켜기",
+        "detail": "인버터/육전 확인",
+        "deviceId": "dev-victron-multiplus",
         "required": true
       },
       {
-        "id": "pre-fuel",
-        "label": "연료량 확인",
+        "id": "bd-4",
+        "label": "육전 페데스탈 카드 잔액 확인"
+      },
+      {
+        "id": "bd-5",
+        "label": "전등·선풍기·냉장고·AC(콘센트)·에어컨 확인"
+      },
+      {
+        "id": "bd-6",
+        "label": "빌지펌프·수도펌프 확인",
+        "deviceId": "dev-bilge-main",
+        "required": true
+      },
+      {
+        "id": "bd-7",
+        "label": "싱크대 수도, 화장실 세면대·변기 물 확인",
+        "deviceId": "dev-water-fwd"
+      },
+      {
+        "id": "bd-8",
+        "label": "소화기·응급키트·VHF 위치 확인",
+        "deviceId": "dev-icom-vhf",
+        "required": true
+      },
+      {
+        "id": "bd-9",
+        "label": "LPG 가스 작동 확인",
+        "detail": "확인 후 밸브 잠글 것",
+        "required": true
+      },
+      {
+        "id": "bd-10",
+        "label": "제습기 확인 후 물 버리기"
+      },
+      {
+        "id": "bd-11",
+        "label": "식재료 냉장고·아이스박스에 넣기"
+      }
+    ]
+  },
+  {
+    "id": "board-sail-prep",
+    "title": "승선 · 항해 준비 (보급·시스템)",
+    "category": "승선 · 항해",
+    "icon": "⛵",
+    "color": "#6366f1",
+    "order": 2,
+    "items": [
+      {
+        "id": "bp-1",
+        "label": "경유·물탱크 잔량 확인 및 채우기",
         "deviceId": "dev-fuel-main",
         "required": true
       },
       {
-        "id": "pre-water",
-        "label": "청수량 확인",
+        "id": "bp-2",
+        "label": "엔진 시동·스로틀·러더·프로펠러 테스트",
+        "deviceId": "dev-engine-main",
+        "required": true
+      },
+      {
+        "id": "bp-3",
+        "label": "식수 확인, LPG 가스 잔량 확인",
         "deviceId": "dev-water-fwd"
       },
       {
-        "id": "pre-engine",
-        "label": "엔진 오일·냉각수 레벨 점검",
-        "deviceId": "dev-engine-main",
-        "detail": "벨트 장력, 누유 확인",
-        "required": true
-      },
-      {
-        "id": "pre-bilge",
-        "label": "빌지 확인 및 빌지펌프 작동 테스트",
-        "deviceId": "dev-bilge-main",
-        "required": true
-      },
-      {
-        "id": "pre-battery",
-        "label": "배터리 전압 확인",
+        "id": "bp-4",
+        "label": "배터리 충전 잔량 확인",
         "deviceId": "dev-battery-house",
         "required": true
       },
       {
-        "id": "pre-seacock",
-        "label": "시콕크 상태 확인",
-        "detail": "엔진 취수 열림, 불필요한 밸브 잠금",
-        "deviceId": "dev-seacock-engine",
+        "id": "bp-5",
+        "label": "레이마린·AIS·VHF·레이더·소나 작동 확인",
+        "deviceId": "dev-axiom-mfd",
         "required": true
       },
       {
-        "id": "pre-nav",
-        "label": "항법등·계기·오토파일럿 작동 확인",
-        "deviceId": "dev-axiom-mfd"
+        "id": "bp-6",
+        "label": "빌지 확인 및 수분 제거",
+        "deviceId": "dev-bilge-main"
       },
       {
-        "id": "pre-comms",
-        "label": "VHF·AIS 작동 확인",
-        "deviceId": "dev-icom-vhf"
+        "id": "bp-7",
+        "label": "치약·수건·비누·휴지·주방세제·비닐봉지 보충"
       },
       {
-        "id": "pre-safety",
-        "label": "구명조끼·안전장비·EPIRB 확인",
+        "id": "bp-8",
+        "label": "식량·커피·차·사탕 보급"
+      },
+      {
+        "id": "bp-9",
+        "label": "멀미약·상비약·응급처치용품 잔량 확인"
+      },
+      {
+        "id": "bp-10",
+        "label": "날씨·풍속·풍향·기상특보 확인",
+        "required": true
+      },
+      {
+        "id": "bp-11",
+        "label": "목적지·항로 확인 및 공유",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "board-sail-safety",
+    "title": "승선 · 항해 안전 점검",
+    "category": "승선 · 항해",
+    "icon": "🛟",
+    "color": "#f43f5e",
+    "order": 3,
+    "items": [
+      {
+        "id": "bs-1",
+        "label": "해치·창문 닫힘 확인",
+        "required": true
+      },
+      {
+        "id": "bs-2",
+        "label": "구명환·구명로프·구명조끼·라이프래프트 확인",
         "deviceId": "dev-epirb",
         "required": true
       },
       {
-        "id": "pre-lines",
-        "label": "계류줄·펜더 정리, 출항 준비"
+        "id": "bs-3",
+        "label": "선실 물품 고박"
+      },
+      {
+        "id": "bs-4",
+        "label": "항해등(현등·무어링등·스프레더등) 확인"
+      },
+      {
+        "id": "bs-5",
+        "label": "데크 위 라인·펜더(수량)·해치 상태 확인"
+      },
+      {
+        "id": "bs-6",
+        "label": "크루 역할 확인",
+        "required": true
+      },
+      {
+        "id": "bs-7",
+        "label": "MOB(사람 빠짐) 절차 확인",
+        "required": true
+      },
+      {
+        "id": "bs-8",
+        "label": "원거리 항해 신고"
+      },
+      {
+        "id": "bs-9",
+        "label": "트랜스듀서 장착",
+        "deviceId": "dev-rvm400"
+      },
+      {
+        "id": "bs-10",
+        "label": "항해 브리핑·안전 브리핑·팀원 컨디션 체크",
+        "required": true
+      },
+      {
+        "id": "bs-11",
+        "label": "비상연락망 확인",
+        "required": true
       }
     ]
   },
   {
-    "phase": "during",
-    "title": "항해 중 점검",
+    "id": "disembark-dock",
+    "title": "하선 · 정박 정리",
+    "category": "하선 · 정박",
+    "icon": "🏁",
+    "color": "#10b981",
+    "order": 4,
     "items": [
       {
-        "id": "dur-engine",
-        "label": "엔진 계기 정상 확인",
-        "detail": "냉각수 온도·유압·회전수",
-        "deviceId": "dev-engine-main",
+        "id": "dd-1",
+        "label": "쓰레기 버리기"
+      },
+      {
+        "id": "dd-2",
+        "label": "주방·화장실·캐빈 정리 및 청소"
+      },
+      {
+        "id": "dd-3",
+        "label": "냉장고 및 아이스박스 확인"
+      },
+      {
+        "id": "dd-4",
+        "label": "데크 위 정리 (커버 씌우기)"
+      },
+      {
+        "id": "dd-5",
+        "label": "LPG 가스 밸브 잠금",
         "required": true
       },
       {
-        "id": "dur-bilge",
-        "label": "빌지 수위 주기 점검",
-        "deviceId": "dev-bilge-main",
+        "id": "dd-6",
+        "label": "전기 스위치 OFF",
+        "deviceId": "dev-battery-house",
         "required": true
       },
       {
-        "id": "dur-charge",
-        "label": "배터리 충전 상태 확인",
-        "deviceId": "dev-battery-house"
-      },
-      {
-        "id": "dur-nav",
-        "label": "항로·AIS 표적·주변 선박 확인",
-        "deviceId": "dev-ais700",
+        "id": "dd-7",
+        "label": "해치/창문 닫힘 확인",
         "required": true
       },
       {
-        "id": "dur-waste",
-        "label": "오수 탱크 수위 확인",
-        "deviceId": "dev-waste-aft"
+        "id": "dd-8",
+        "label": "육전 케이블 확인"
       },
       {
-        "id": "dur-watch",
-        "label": "당직 교대·견시 유지"
-      }
-    ]
-  },
-  {
-    "phase": "post",
-    "title": "입항 후 정리",
-    "items": [
-      {
-        "id": "post-engine",
-        "label": "엔진 정지 및 시콕크 잠금",
-        "deviceId": "dev-seacock-engine",
-        "required": true
-      },
-      {
-        "id": "post-elec",
-        "label": "전기 계통 정리 (불필요 전원 차단)",
-        "deviceId": "dev-battery-house"
-      },
-      {
-        "id": "post-bilge",
-        "label": "빌지 확인 및 건조",
+        "id": "dd-9",
+        "label": "빌지 확인 후 수분 제거",
         "deviceId": "dev-bilge-main"
       },
       {
-        "id": "post-tank",
-        "label": "청수 보충·오수 처리",
-        "deviceId": "dev-waste-aft"
+        "id": "dd-10",
+        "label": "개인 짐 모두 챙기기"
       },
       {
-        "id": "post-moor",
-        "label": "계류 확인, 펜더·커버 정리",
+        "id": "dd-11",
+        "label": "문 잠그기",
         "required": true
-      },
-      {
-        "id": "post-clean",
-        "label": "쓰레기·개인물품 정리, 시건 확인"
       }
     ]
   }
