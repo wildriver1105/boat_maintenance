@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import type {
+  CheckRecord,
+  CheckStatus,
   ChecklistItem,
   ProcedureRun,
   ProcedureTemplate,
@@ -49,6 +51,12 @@ export default function ProceduresView() {
     void loadRuns();
     fetch("/api/devices").then((r) => r.json()).then(setDevices);
   }, [loadTemplates, loadRuns]);
+
+  // 실시간 동기화 — 다른 크루의 체크가 반영되도록 실행 상태를 주기적으로 갱신
+  useEffect(() => {
+    const t = setInterval(() => void loadRuns(), 2500);
+    return () => clearInterval(t);
+  }, [loadRuns]);
 
   useEffect(() => {
     const es = new EventSource("/api/telemetry");
@@ -204,7 +212,9 @@ export default function ProceduresView() {
               template={selected ?? undefined}
               deviceById={deviceById}
               readings={readings}
-              onCheck={(itemId, checked) => patch(activeRun.id, { action: "check", itemId, checked })}
+              currentUserId={session?.user?.id}
+              isAdmin={isAdmin}
+              onStatus={(itemId, status) => patch(activeRun.id, { action: "status", itemId, status })}
               onNote={(itemId, note) => patch(activeRun.id, { action: "note", itemId, note })}
               onComplete={() => patch(activeRun.id, { action: "complete" })}
             />
@@ -267,7 +277,9 @@ function RunCard({
   template,
   deviceById,
   readings,
-  onCheck,
+  currentUserId,
+  isAdmin,
+  onStatus,
   onNote,
   onComplete,
 }: {
@@ -275,16 +287,24 @@ function RunCard({
   template?: ProcedureTemplate;
   deviceById: Record<string, Device>;
   readings: Record<string, DeviceReading>;
-  onCheck: (itemId: string, checked: boolean) => void;
+  currentUserId?: string;
+  isAdmin: boolean;
+  onStatus: (itemId: string, status: CheckStatus | "none") => void;
   onNote: (itemId: string, note: string) => void;
   onComplete: () => void;
 }) {
   const items = template?.items ?? [];
   const checkOf = (id: string) => run.checks.find((c) => c.itemId === id);
+  const decidedOf = (id: string) => {
+    const s = checkOf(id)?.status;
+    return s === "ok" || s === "problem";
+  };
   const required = items.filter((i) => i.required);
-  const doneRequired = required.filter((i) => checkOf(i.id)).length;
-  const doneAll = items.filter((i) => checkOf(i.id)).length;
-  const allRequiredDone = doneRequired === required.length;
+  const reqDecided = required.filter((i) => decidedOf(i.id)).length;
+  const decided = items.filter((i) => decidedOf(i.id)).length;
+  const problems = items.filter((i) => checkOf(i.id)?.status === "problem").length;
+  const pending = items.filter((i) => checkOf(i.id)?.status === "pending").length;
+  const allRequiredDone = reqDecided === required.length;
   const color = template?.color ?? "#0ea5e9";
 
   return (
@@ -293,16 +313,25 @@ function RunCard({
         <div>
           <h2 className="text-base font-semibold text-slate-800">{run.title}</h2>
           <p className="mt-0.5 text-xs text-slate-400">
-            {run.startedByName} 시작 · {fmt(run.startedAt)}
+            {run.startedByName} 시작 · {fmt(run.startedAt)} ·{" "}
+            <span className="inline-flex items-center gap-1 text-emerald-600">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              실시간
+            </span>
           </p>
         </div>
-        <span className="text-sm font-medium" style={{ color }}>
-          {doneAll}/{items.length}
-        </span>
+        <div className="text-right">
+          <span className="text-sm font-medium" style={{ color }}>
+            {decided}/{items.length}
+          </span>
+          {problems > 0 && (
+            <div className="text-xs font-semibold text-red-500">문제 {problems}</div>
+          )}
+        </div>
       </div>
 
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full rounded-full transition-all" style={{ width: `${items.length ? (doneAll / items.length) * 100 : 0}%`, background: color }} />
+        <div className="h-full rounded-full transition-all" style={{ width: `${items.length ? (decided / items.length) * 100 : 0}%`, background: color }} />
       </div>
 
       <ul className="mt-4 divide-y divide-slate-100">
@@ -311,13 +340,15 @@ function RunCard({
             key={item.id}
             item={item}
             check={checkOf(item.id)}
+            currentUserId={currentUserId}
+            isAdmin={isAdmin}
             device={item.deviceId ? deviceById[item.deviceId] : undefined}
             reading={
               item.deviceId && deviceById[item.deviceId]?.sensorId
                 ? readings[deviceById[item.deviceId].sensorId!]
                 : undefined
             }
-            onToggle={(checked) => onCheck(item.id, checked)}
+            onStatus={(status) => onStatus(item.id, status)}
             onNote={(note) => onNote(item.id, note)}
           />
         ))}
@@ -325,7 +356,8 @@ function RunCard({
 
       <div className="mt-5 flex items-center justify-between">
         <span className="text-xs text-slate-400">
-          {allRequiredDone ? "필수 항목 완료 — 점검을 마칠 수 있습니다." : `필수 ${required.length - doneRequired}개 남음`}
+          {pending > 0 && <span className="text-amber-600">점검 중 {pending} · </span>}
+          {allRequiredDone ? "필수 항목 결정 완료 — 마칠 수 있습니다." : `필수 ${required.length - reqDecided}개 남음`}
         </span>
         <button
           onClick={onComplete}
@@ -339,59 +371,109 @@ function RunCard({
   );
 }
 
-/* ---------- 항목 행 (실행) ---------- */
+/* ---------- 항목 행 (3단계: 회색→노랑 pending→초록/빨강) ---------- */
 function ItemRow({
   item,
   check,
   device,
   reading,
-  onToggle,
+  currentUserId,
+  isAdmin,
+  onStatus,
   onNote,
 }: {
   item: ChecklistItem;
-  check?: { checkedByName: string; checkedAt: string; note?: string };
+  check?: CheckRecord;
   device?: Device;
   reading?: DeviceReading;
-  onToggle: (checked: boolean) => void;
+  currentUserId?: string;
+  isAdmin: boolean;
+  onStatus: (status: CheckStatus | "none") => void;
   onNote: (note: string) => void;
 }) {
-  const checked = !!check;
+  const status = check?.status;
   const [note, setNote] = useState(check?.note ?? "");
   useEffect(() => setNote(check?.note ?? ""), [check?.note]);
+  const canReset = !!check && (check.checkedBy === currentUserId || isAdmin);
+  const statusColor =
+    status === "ok" ? "#10b981" : status === "problem" ? "#ef4444" : status === "pending" ? "#f59e0b" : undefined;
 
   return (
     <li className="flex gap-3 py-3">
-      <button
-        onClick={() => onToggle(!checked)}
-        aria-label={checked ? "체크 해제" : "체크"}
-        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 text-sm transition-colors ${
-          checked ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-transparent hover:border-slate-400"
-        }`}
-      >
-        ✓
-      </button>
+      {/* 좌측 상태 표시 / 점검 시작 버튼 */}
+      {!status ? (
+        <button
+          onClick={() => onStatus("pending")}
+          aria-label="점검 시작"
+          className="mt-0.5 h-6 w-6 shrink-0 rounded-md border-2 border-slate-300 transition-colors hover:border-slate-400"
+        />
+      ) : (
+        <span
+          className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-sm font-bold text-white"
+          style={{ background: statusColor }}
+        >
+          {status === "ok" ? "✓" : status === "problem" ? "!" : "⋯"}
+        </span>
+      )}
+
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className={`text-sm font-medium ${checked ? "text-slate-400 line-through" : "text-slate-800"}`}>
+          <span
+            className={`text-sm font-medium ${
+              status === "ok" ? "text-slate-400 line-through" : status === "problem" ? "text-red-600" : "text-slate-800"
+            }`}
+          >
             {item.label}
           </span>
           {item.required && <span className="text-[10px] font-semibold text-rose-500">필수</span>}
           <DeviceChip device={device} reading={reading} />
         </div>
         {item.detail && <p className="mt-0.5 text-xs text-slate-400">{item.detail}</p>}
-        {checked && check && (
+
+        {/* 노랑 pending: 정상/문제 선택 */}
+        {status === "pending" && check && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
+              점검 중 · {check.checkedByName}
+            </span>
+            <button onClick={() => onStatus("ok")} className="rounded-md bg-emerald-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-600">
+              정상
+            </button>
+            <button onClick={() => onStatus("problem")} className="rounded-md bg-red-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-600">
+              문제
+            </button>
+            {canReset && (
+              <button onClick={() => onStatus("none")} className="text-xs text-slate-400 hover:underline">
+                취소
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* 결정됨: 정상/문제 + 메모 */}
+        {(status === "ok" || status === "problem") && check && (
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-              ✓ {check.checkedByName} · {fmt(check.checkedAt)}
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                status === "ok" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"
+              }`}
+            >
+              {status === "ok" ? "정상" : "문제"} · {check.checkedByName} · {fmt(check.checkedAt)}
             </span>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
               onBlur={() => note !== (check.note ?? "") && onNote(note)}
               onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-              placeholder="메모 추가…"
+              placeholder={status === "problem" ? "문제 내용 메모…" : "메모…"}
               className="min-w-0 flex-1 rounded-md border border-slate-200 px-2 py-1 text-xs outline-none focus:border-sky-400"
             />
+            {canReset && (
+              <button onClick={() => onStatus("none")} className="text-xs text-slate-400 hover:underline">
+                되돌리기
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -413,15 +495,21 @@ function HistoryRow({
 }) {
   const [open, setOpen] = useState(false);
   const items = template?.items ?? [];
+  const problems = run.checks.filter((c) => c.status === "problem").length;
   return (
     <div className="rounded-xl border border-slate-200 bg-white">
       <div className="flex items-center justify-between px-4 py-3">
         <button onClick={() => setOpen((v) => !v)} className="flex-1 text-left">
-          <div className="text-sm font-medium text-slate-700">
+          <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
             {run.completedAt ? fmt(run.completedAt) : fmt(run.startedAt)} 완료
+            {problems > 0 && (
+              <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-600">
+                문제 {problems}
+              </span>
+            )}
           </div>
           <div className="text-xs text-slate-400">
-            완료: {run.completedByName ?? run.startedByName} · 체크 {run.checks.length}개
+            완료: {run.completedByName ?? run.startedByName} · 점검 {run.checks.length}개
           </div>
         </button>
         {canDelete && (
@@ -437,10 +525,11 @@ function HistoryRow({
         <ul className="border-t border-slate-100 px-4 py-2 text-sm">
           {items.map((item) => {
             const c = run.checks.find((x) => x.itemId === item.id);
+            const s = c?.status;
             return (
               <li key={item.id} className="flex items-start justify-between gap-3 py-1.5">
-                <span className={c ? "text-slate-700" : "text-slate-300"}>
-                  {c ? "✓" : "○"} {item.label}
+                <span className={s === "problem" ? "font-medium text-red-600" : s === "ok" ? "text-slate-700" : "text-slate-300"}>
+                  {s === "ok" ? "✓" : s === "problem" ? "⚠" : s === "pending" ? "⋯" : "○"} {item.label}
                   {c?.note && <span className="ml-1 text-xs text-slate-400">— {c.note}</span>}
                 </span>
                 {c && (

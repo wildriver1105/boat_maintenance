@@ -6,9 +6,9 @@ import {
   deleteRun,
   getRun,
   setNote,
-  toggleCheck,
+  setStatus,
 } from "@/lib/procedures/registry";
-import { actingUser } from "@/lib/procedures/session";
+import type { CheckStatus } from "@/lib/procedures/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,19 +22,23 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const user = await actingUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const session = await auth();
+  const su = session?.user;
+  if (!su) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const user = { id: su.id ?? su.email ?? "unknown", name: su.name ?? su.email ?? "알 수 없음" };
+  const isAdmin = su.role === "admin";
+
   const body = (await req.json()) as {
-    action: "check" | "note" | "complete";
+    action: "status" | "note" | "complete";
     itemId?: string;
-    checked?: boolean;
+    status?: CheckStatus | "none";
     note?: string;
   };
   const now = new Date().toISOString();
 
   let run;
-  if (body.action === "check" && body.itemId) {
-    run = await toggleCheck(id, body.itemId, !!body.checked, user, now);
+  if (body.action === "status" && body.itemId && body.status) {
+    run = await setStatus(id, body.itemId, body.status, user, isAdmin, now);
   } else if (body.action === "note" && body.itemId) {
     run = await setNote(id, body.itemId, body.note ?? "");
   } else if (body.action === "complete") {

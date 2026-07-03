@@ -24,9 +24,18 @@ export interface ProcedureTemplate {
   items: ChecklistItem[];
 }
 
+/**
+ * 항목 체크 상태:
+ *  pending = 점검 중(노랑) — 누군가 확인하는 중, 동시 취소 방지
+ *  ok      = 정상(초록)
+ *  problem = 문제 있음(빨강)
+ */
+export type CheckStatus = "pending" | "ok" | "problem";
+
 /** 한 항목의 체크 기록 — checkedBy/At 는 서버가 세션 기준으로 기록(위조 불가) */
 export interface CheckRecord {
   itemId: string;
+  status: CheckStatus;
   checkedBy: string;
   checkedByName: string;
   checkedAt: string; // ISO

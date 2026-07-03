@@ -5,7 +5,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
-import type { ChecklistItem, ProcedureRun, ProcedureTemplate } from "./types";
+import type { CheckStatus, ChecklistItem, ProcedureRun, ProcedureTemplate } from "./types";
 import { DEFAULT_TEMPLATES } from "./defaults";
 
 const TPL_FILE = path.join(process.cwd(), "data", "procedures.json");
@@ -164,11 +164,18 @@ export async function createRun(
   });
 }
 
-export async function toggleCheck(
+/**
+ * 항목 상태 전이. 동시 클릭으로 남의 작업이 취소되지 않도록:
+ *  - "pending": 기존 기록이 없을 때만 선점(이미 누가 점검 중/결정했으면 무시)
+ *  - "ok"/"problem": 어느 상태에서든 결정으로 갱신(확정자/시각 기록)
+ *  - "none"(되돌리기): 해당 기록을 만든 본인 또는 관리자만 가능
+ */
+export async function setStatus(
   runId: string,
   itemId: string,
-  checked: boolean,
+  status: CheckStatus | "none",
   user: ActingUser,
+  isAdmin: boolean,
   now: string,
 ): Promise<ProcedureRun | null> {
   return withLock(async () => {
@@ -176,18 +183,36 @@ export async function toggleCheck(
     const run = runs.find((r) => r.id === runId);
     if (!run) return null;
     if (run.completedAt) return run;
-    const existing = run.checks.find((c) => c.itemId === itemId);
-    if (checked) {
+    const idx = run.checks.findIndex((c) => c.itemId === itemId);
+    const existing = idx >= 0 ? run.checks[idx] : undefined;
+
+    if (status === "none") {
+      if (existing && (existing.checkedBy === user.id || isAdmin)) {
+        run.checks.splice(idx, 1);
+      }
+    } else if (status === "pending") {
       if (!existing) {
         run.checks.push({
           itemId,
+          status: "pending",
           checkedBy: user.id,
           checkedByName: user.name,
           checkedAt: now,
         });
       }
+      // 이미 기록이 있으면 선점 실패로 무시(취소 방지)
     } else {
-      run.checks = run.checks.filter((c) => c.itemId !== itemId);
+      // ok | problem — 결정 확정
+      const rec = {
+        itemId,
+        status,
+        checkedBy: user.id,
+        checkedByName: user.name,
+        checkedAt: now,
+        note: existing?.note,
+      };
+      if (idx >= 0) run.checks[idx] = rec;
+      else run.checks.push(rec);
     }
     await writeRuns(runs);
     return run;
