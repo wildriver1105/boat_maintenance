@@ -456,7 +456,8 @@ function DeviceMarkers({
         const dimmed =
           !!section.range && (x < section.range[0] || x > section.range[1]);
         return (
-          <Html key={d.id} position={[x, y, z]} center distanceFactor={11} zIndexRange={[15, 0]}>
+          // distanceFactor 없이 고정 픽셀 크기 — 줌인해도 마커가 커지지 않는다
+          <Html key={d.id} position={[x, y, z]} center zIndexRange={[15, 0]}>
             <div
               className="flex flex-col items-center transition-opacity"
               style={{
@@ -470,9 +471,9 @@ function DeviceMarkers({
                   e.stopPropagation();
                   onSelect(d.id);
                 }}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-base shadow-md transition-transform hover:scale-110"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-sm shadow-md transition-transform hover:scale-110"
                 style={{
-                  boxShadow: `0 0 0 3px ${color}${selected ? ", 0 0 0 6px #0ea5e9" : ""}, 0 2px 6px rgba(0,0,0,0.25)`,
+                  boxShadow: `0 0 0 2.5px ${color}${selected ? ", 0 0 0 5px #0ea5e9" : ""}, 0 2px 5px rgba(0,0,0,0.25)`,
                 }}
               >
                 {CATEGORY_META[d.category].icon}
