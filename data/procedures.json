@@ -34,13 +34,11 @@
       {
         "id": "bd-6",
         "label": "빌지펌프·수도펌프 확인",
-        "deviceId": "dev-bilge-main",
         "required": true
       },
       {
         "id": "bd-7",
-        "label": "싱크대 수도, 화장실 세면대·변기 물 확인",
-        "deviceId": "dev-water-fwd"
+        "label": "싱크대 수도, 화장실 세면대·변기 물 확인"
       },
       {
         "id": "bd-8",
@@ -75,24 +73,21 @@
       {
         "id": "bp-1",
         "label": "경유·물탱크 잔량 확인 및 채우기",
-        "deviceId": "dev-fuel-main",
         "required": true
       },
       {
         "id": "bp-2",
         "label": "엔진 시동·스로틀·러더·프로펠러 테스트",
-        "deviceId": "dev-engine-main",
         "required": true
       },
       {
         "id": "bp-3",
-        "label": "식수 확인, LPG 가스 잔량 확인",
-        "deviceId": "dev-water-fwd"
+        "label": "식수 확인, LPG 가스 잔량 확인"
       },
       {
         "id": "bp-4",
         "label": "배터리 충전 잔량 확인",
-        "deviceId": "dev-battery-house",
+        "deviceId": "dev-renogy-lifepo4",
         "required": true
       },
       {
@@ -103,8 +98,7 @@
       },
       {
         "id": "bp-6",
-        "label": "빌지 확인 및 수분 제거",
-        "deviceId": "dev-bilge-main"
+        "label": "빌지 확인 및 수분 제거"
       },
       {
         "id": "bp-7",
@@ -224,7 +218,7 @@
       {
         "id": "dd-6",
         "label": "전기 스위치 OFF",
-        "deviceId": "dev-battery-house",
+        "deviceId": "dev-renogy-lifepo4",
         "required": true
       },
       {
@@ -238,8 +232,7 @@
       },
       {
         "id": "dd-9",
-        "label": "빌지 확인 후 수분 제거",
-        "deviceId": "dev-bilge-main"
+        "label": "빌지 확인 후 수분 제거"
       },
       {
         "id": "dd-10",

@@ -1,178 +1,357 @@
 [
   {
-    "id": "dev-engine-main",
-    "name": "메인 엔진",
-    "category": "engine",
-    "position": { "x": 735, "y": 430 },
-    "sideY": 534,
-    "sensorId": "eng-main",
-    "config": { "maxTempC": 105, "capacityHp": 54 }
-  },
-  {
-    "id": "dev-fuel-main",
-    "name": "연료 탱크",
-    "category": "fuel",
-    "position": { "x": 470, "y": 480 },
-    "sideY": 512,
-    "sensorId": "fuel-main",
-    "config": { "capacityL": 240 }
-  },
-  {
-    "id": "dev-water-fwd",
-    "name": "청수 탱크",
-    "category": "water",
-    "position": { "x": 1080, "y": 560 },
-    "sideY": 528,
-    "sensorId": "water-fwd",
-    "config": { "capacityL": 330 }
-  },
-  {
-    "id": "dev-waste-aft",
-    "name": "오수 탱크",
-    "category": "waste",
-    "position": { "x": 690, "y": 300 },
-    "sideY": 470,
-    "sensorId": "waste-aft",
-    "config": { "capacityL": 80 }
-  },
-  {
-    "id": "dev-battery-house",
-    "name": "하우스 배터리 뱅크",
-    "category": "electrical",
-    "position": { "x": 545, "y": 460 },
-    "sideY": 520,
-    "sensorId": "batt-house",
-    "config": { "nominalV": 12, "capacityAh": 440 }
-  },
-  {
-    "id": "dev-bilge-main",
-    "name": "빌지 펌프",
-    "category": "bilge",
-    "position": { "x": 815, "y": 555 },
-    "sideY": 562,
-    "sensorId": "bilge-main",
-    "config": { "alarmMm": 150 }
-  },
-  {
-    "id": "dev-seacock-engine",
-    "name": "시콕크(엔진 취수)",
-    "category": "seacock",
-    "position": { "x": 700, "y": 515 },
-    "sideY": 570,
-    "sensorId": "cock-engine"
-  },
-  {
-    "id": "dev-seacock-galley",
-    "name": "시콕크(갤리 배수)",
-    "category": "seacock",
-    "position": { "x": 1010, "y": 615 },
-    "sideY": 566,
-    "sensorId": "cock-galley"
-  },
-  {
     "id": "dev-victron-multiplus",
     "name": "Victron Multiplus II",
     "category": "charging",
-    "position": { "x": 420, "y": 545 },
+    "position": { "x": 640, "y": 390 },
     "sideY": 470,
     "sensorId": "chg-multiplus",
-    "config": { "ratedW": 3000 }
+    "notes": "인버터/차저 — 육상전원(AC)→DC 하우스 인산철 충전 & 인산철 DC→AC 인버터"
   },
   {
-    "id": "dev-victron-mppt",
+    "id": "dev-orion-1",
+    "name": "Victron Orion DC Charger (1)",
+    "category": "charging",
+    "position": { "x": 745, "y": 430 },
+    "sideY": 495,
+    "sensorId": "chg-orion1",
+    "config": { "ratedA": 50 },
+    "notes": "12V 50A DC-DC 충전기 — 하우스(인산철)↔엔진(납축전지) 상호 충전, 엔진 배터리 스타보드 2개"
+  },
+  {
+    "id": "dev-orion-2",
+    "name": "Victron Orion DC Charger (2)",
+    "category": "charging",
+    "position": { "x": 745, "y": 462 },
+    "sideY": 495,
+    "sensorId": "chg-orion2",
+    "config": { "ratedA": 50 },
+    "notes": "12V 50A DC-DC 충전기 — 엔진 배터리 포트 2개"
+  },
+  {
+    "id": "dev-mppt-150-70",
     "name": "Victron MPPT 150/70",
     "category": "charging",
-    "position": { "x": 340, "y": 470 },
-    "sideY": 452,
-    "sensorId": "chg-mppt",
-    "config": { "ratedW": 1000 }
+    "position": { "x": 445, "y": 405 },
+    "sideY": 468,
+    "sensorId": "chg-mppt150",
+    "notes": "태양광 솔라 충전기 — 고정형 패널 포트, 중앙"
+  },
+  {
+    "id": "dev-mppt-100-50-1",
+    "name": "Victron MPPT 100/50 (1)",
+    "category": "charging",
+    "position": { "x": 478, "y": 438 },
+    "sideY": 468,
+    "sensorId": "chg-mppt50a",
+    "notes": "태양광 충전기 — 고정형 패널 스타보드"
+  },
+  {
+    "id": "dev-mppt-100-50-2",
+    "name": "Victron MPPT 100/50 (2)",
+    "category": "charging",
+    "position": { "x": 560, "y": 455 },
+    "sideY": 478,
+    "sensorId": "chg-mppt50b",
+    "notes": "태양광 충전기 — 탈부착형 패널 스타보드 3개"
+  },
+  {
+    "id": "dev-mppt-100-50-3",
+    "name": "Victron MPPT 100/50 (3)",
+    "category": "charging",
+    "position": { "x": 620, "y": 478 },
+    "sideY": 478,
+    "sensorId": "chg-mppt50c",
+    "notes": "태양광 충전기 — 탈부착형 패널 포트 2개"
+  },
+  {
+    "id": "dev-lynx-smartshunt",
+    "name": "Victron Lynx SmartShunt",
+    "category": "electrical",
+    "position": { "x": 408, "y": 362 },
+    "sideY": 492,
+    "sensorId": "elec-lynx",
+    "notes": "하우스 인산철 배터리 전류 측정·관리용 스마트 분배/모니터링 허브"
+  },
+  {
+    "id": "dev-smartshunt-port",
+    "name": "Victron SmartShunt (Port)",
+    "category": "electrical",
+    "position": { "x": 705, "y": 395 },
+    "sideY": 500,
+    "sensorId": "elec-shunt-p",
+    "notes": "포트 엔진 배터리 전류·전압 감시 센서"
+  },
+  {
+    "id": "dev-smartshunt-stbd",
+    "name": "Victron SmartShunt (Stbd)",
+    "category": "electrical",
+    "position": { "x": 705, "y": 458 },
+    "sideY": 500,
+    "sensorId": "elec-shunt-s",
+    "notes": "스타보드 엔진 배터리 전류·전압 감시 센서"
+  },
+  {
+    "id": "dev-agrofet-isolator",
+    "name": "Victron Agrofet Battery Isolator",
+    "category": "electrical",
+    "position": { "x": 790, "y": 425 },
+    "sideY": 500,
+    "sensorId": "elec-agrofet",
+    "notes": "배터리 간 전류 역류 방지, 엔진 발전기로 배터리 병렬 충전"
   },
   {
     "id": "dev-promariner-charger",
-    "name": "ProMariner 충전기",
+    "name": "ProMariner 3P 50A Charger",
     "category": "charging",
-    "position": { "x": 330, "y": 555 },
-    "sideY": 492,
-    "sensorId": "chg-promariner"
+    "position": { "x": 375, "y": 512 },
+    "sideY": 505,
+    "sensorId": "chg-promariner",
+    "notes": "육상 전원으로 엔진 배터리를 충전하는 충전기"
   },
   {
-    "id": "dev-victron-cerbo",
-    "name": "Victron Cerbo GX",
+    "id": "dev-renogy-lifepo4",
+    "name": "Renogy LiFePO4 배터리 (1~4)",
     "category": "electrical",
-    "position": { "x": 575, "y": 400 },
-    "sideY": 420,
-    "sensorId": "elec-cerbo"
+    "position": { "x": 665, "y": 492 },
+    "sideY": 522,
+    "sensorId": "batt-house",
+    "config": { "count": 4, "nominalV": 12, "capacityAhEach": 300 },
+    "notes": "고용량 메인 하우스 배터리 (리튬인산철) 12V 300Ah ×4"
   },
   {
-    "id": "dev-victron-smartshunt",
-    "name": "Victron SmartShunt",
+    "id": "dev-panasonic-leadacid",
+    "name": "Panasonic 납산 배터리 (1~4)",
     "category": "electrical",
-    "position": { "x": 470, "y": 405 },
-    "sideY": 508,
-    "sensorId": "elec-shunt"
+    "position": { "x": 525, "y": 505 },
+    "sideY": 515,
+    "sensorId": "batt-engine",
+    "config": { "count": 4, "nominalV": 12, "capacityAhEach": 75 },
+    "notes": "엔진 시동 및 보조용 납산 배터리 12V 75Ah ×4"
+  },
+  {
+    "id": "dev-isotrans-port",
+    "name": "Victron Isolation Transformer (Port)",
+    "category": "electrical",
+    "position": { "x": 392, "y": 395 },
+    "sideY": 505,
+    "sensorId": "elec-isot-p",
+    "notes": "육상전원-요트 절연, 감전·전식 방지 및 115V 변압 (좌현측)"
+  },
+  {
+    "id": "dev-isotrans-stbd",
+    "name": "Victron Isolation Transformer (Stbd)",
+    "category": "electrical",
+    "position": { "x": 392, "y": 462 },
+    "sideY": 505,
+    "sensorId": "elec-isot-s",
+    "notes": "육상전원-요트 절연, 감전·전식 방지 및 115V 변압 (우현측)"
   },
   {
     "id": "dev-axiom-mfd",
-    "name": "Raymarine Axiom MFD",
+    "name": "Raymarine Axiom 2 RVM 9\"",
     "category": "navigation",
-    "position": { "x": 1250, "y": 335 },
+    "position": { "x": 440, "y": 296 },
+    "sideY": 415,
+    "sensorId": "nav-axiom2",
+    "notes": "메인 차트플로터 — 항로 및 장비 통합 표시"
+  },
+  {
+    "id": "dev-axiom9-2",
+    "name": "Raymarine Axiom 9\"",
+    "category": "navigation",
+    "position": { "x": 1050, "y": 230 },
     "sideY": 420,
-    "sensorId": "nav-axiom"
+    "sensorId": "nav-axiom9",
+    "notes": "세컨더리 차트플로터 (선내 보조 화면)"
+  },
+  {
+    "id": "dev-i70s",
+    "name": "Raymarine i70s Display",
+    "category": "navigation",
+    "position": { "x": 424, "y": 258 },
+    "sideY": 408,
+    "sensorId": "nav-i70s",
+    "notes": "다기능 항해 계기 (풍속·수심·속도 등)"
+  },
+  {
+    "id": "dev-i60",
+    "name": "Raymarine i60 Display",
+    "category": "navigation",
+    "position": { "x": 420, "y": 222 },
+    "sideY": 405,
+    "sensorId": "nav-i60",
+    "notes": "바람 방향 및 풍속 표시 장치"
+  },
+  {
+    "id": "dev-p70s",
+    "name": "Raymarine P70s Autopilot Controller",
+    "category": "navigation",
+    "position": { "x": 262, "y": 292 },
+    "sideY": 418,
+    "sensorId": "nav-p70s",
+    "notes": "오토파일럿 수동 제어 패널"
+  },
+  {
+    "id": "dev-ev1",
+    "name": "Raymarine EV 1 (Autopilot Sensor)",
+    "category": "navigation",
+    "position": { "x": 436, "y": 192 },
+    "sideY": 468,
+    "sensorId": "nav-ev1",
+    "notes": "오토파일럿 자이로/가속도 센서"
   },
   {
     "id": "dev-acu400",
-    "name": "오토파일럿 ACU-400",
+    "name": "Raymarine ACU 400 Autopilot",
     "category": "navigation",
-    "position": { "x": 1360, "y": 485 },
-    "sideY": 476,
-    "sensorId": "nav-acu400"
+    "position": { "x": 350, "y": 478 },
+    "sideY": 490,
+    "sensorId": "nav-acu400",
+    "notes": "오토파일럿 구동 장치 (조타 모터 제어)"
+  },
+  {
+    "id": "dev-ar200",
+    "name": "Raymarine AR 200 (AR Sensor)",
+    "category": "navigation",
+    "position": { "x": 292, "y": 505 },
+    "sideY": 450,
+    "sensorId": "nav-ar200",
+    "notes": "증강현실 항법 센서 — 영상 오버레이용 자세·위치 데이터"
+  },
+  {
+    "id": "dev-itc5",
+    "name": "Raymarine ITC-5 (Analogue Sensor)",
+    "category": "navigation",
+    "position": { "x": 1180, "y": 235 },
+    "sideY": 432,
+    "sensorId": "nav-itc5",
+    "notes": "아날로그 항해 센서 → 디지털 네트워크 변환 인터페이스"
+  },
+  {
+    "id": "dev-aux-alarm",
+    "name": "Raymarine Auxiliary Alarm",
+    "category": "navigation",
+    "position": { "x": 1080, "y": 220 },
+    "sideY": 400,
+    "sensorId": "nav-auxalarm",
+    "notes": "레이마린 시스템 경보 발생 장치"
+  },
+  {
+    "id": "dev-speedmeter",
+    "name": "Speedmeter Sensor",
+    "category": "navigation",
+    "position": { "x": 1520, "y": 400 },
+    "sideY": 562,
+    "sensorId": "nav-speed",
+    "notes": "속도계 센서 (선체 하부 수류 감지)"
+  },
+  {
+    "id": "dev-bowthruster-ctrl",
+    "name": "Bow Thruster Controller",
+    "category": "navigation",
+    "position": { "x": 482, "y": 232 },
+    "sideY": 418,
+    "sensorId": "nav-btctrl",
+    "notes": "선수 추진기(바우 스러스터) 제어 패널"
+  },
+  {
+    "id": "dev-bow-thruster",
+    "name": "Bow Thruster",
+    "category": "other",
+    "position": { "x": 1800, "y": 425 },
+    "sideY": 470,
+    "sensorId": "misc-bowthruster",
+    "notes": "선수를 좌우로 밀어 정박·접안 시 보조 조향"
   },
   {
     "id": "dev-rvm400",
-    "name": "RVM400 소나 센서",
+    "name": "Raymarine RVM 400 (SONAR Sensor)",
     "category": "navigation",
-    "position": { "x": 1560, "y": 470 },
-    "sideY": 540,
-    "sensorId": "nav-rvm400"
+    "position": { "x": 1580, "y": 432 },
+    "sideY": 558,
+    "sensorId": "sonar-rvm400",
+    "notes": "수심 및 어군 감지용 센서 (RVM 시스템)"
   },
   {
-    "id": "dev-starlink",
-    "name": "Starlink",
+    "id": "dev-rvm1600",
+    "name": "Raymarine RVM 1600 (SONAR Computer)",
+    "category": "navigation",
+    "position": { "x": 1120, "y": 242 },
+    "sideY": 430,
+    "sensorId": "sonar-rvm1600",
+    "notes": "RVM 시리즈 중앙처리기 — 소나 데이터 연산·출력"
+  },
+  {
+    "id": "dev-ais700",
+    "name": "Raymarine AIS 700",
     "category": "comms",
-    "position": { "x": 1180, "y": 255 },
-    "sideY": 244,
-    "sensorId": "comm-starlink"
+    "position": { "x": 1010, "y": 215 },
+    "sideY": 420,
+    "sensorId": "comm-ais",
+    "notes": "선박 자동식별 시스템 (AIS 송수신기)"
+  },
+  {
+    "id": "dev-ais-gps-antenna",
+    "name": "AIS 700 GPS Antenna",
+    "category": "comms",
+    "position": { "x": 500, "y": 190 },
+    "sideY": 300,
+    "sensorId": "comm-ais-gps",
+    "notes": "AIS 700 전용 GPS 수신 안테나"
   },
   {
     "id": "dev-icom-vhf",
     "name": "ICOM VHF",
     "category": "comms",
-    "position": { "x": 980, "y": 260 },
-    "sideY": 396,
-    "sensorId": "comm-vhf"
-  },
-  {
-    "id": "dev-ais700",
-    "name": "AIS 700",
-    "category": "comms",
-    "position": { "x": 880, "y": 235 },
-    "sideY": 420,
-    "sensorId": "comm-ais"
+    "position": { "x": 1060, "y": 245 },
+    "sideY": 398,
+    "sensorId": "comm-vhf",
+    "notes": "해상용 단거리 무선통신기 (VHF 트랜시버)"
   },
   {
     "id": "dev-epirb",
-    "name": "EPIRB",
+    "name": "EPIRB (Jotron)",
     "category": "safety",
-    "position": { "x": 1090, "y": 225 },
-    "sideY": 350,
-    "sensorId": "safe-epirb"
+    "position": { "x": 240, "y": 272 },
+    "sideY": 348,
+    "sensorId": "safe-epirb",
+    "notes": "조난신호 자동 송신 장치 (국제 위성수색체계 연동)"
   },
   {
-    "id": "dev-bow-thruster",
-    "name": "바우 스러스터",
-    "category": "other",
-    "position": { "x": 1700, "y": 428 },
-    "sideY": 470,
-    "sensorId": "misc-bowthruster"
+    "id": "dev-starlink",
+    "name": "Starlink Antenna",
+    "category": "comms",
+    "position": { "x": 250, "y": 242 },
+    "sideY": 248,
+    "sensorId": "comm-starlink",
+    "notes": "저궤도 위성통신용 안테나"
+  },
+  {
+    "id": "dev-starlink-dc",
+    "name": "Starlink DC Converter",
+    "category": "comms",
+    "position": { "x": 456, "y": 505 },
+    "sideY": 500,
+    "sensorId": "comm-starlink-dc",
+    "notes": "스타링크 전원공급용 DC 변환기"
+  },
+  {
+    "id": "dev-starlink-router",
+    "name": "Starlink Wi-Fi Router",
+    "category": "comms",
+    "position": { "x": 1090, "y": 540 },
+    "sideY": 428,
+    "sensorId": "comm-starlink-router",
+    "notes": "선내 인터넷 신호 분배용 라우터"
+  },
+  {
+    "id": "dev-victron-cerbo",
+    "name": "Victron Cerbo GX",
+    "category": "electrical",
+    "position": { "x": 510, "y": 380 },
+    "sideY": 438,
+    "sensorId": "elec-cerbo",
+    "notes": "Victron 장비 통합 모니터링 및 데이터 네트워크 허브"
   }
 ]

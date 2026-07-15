@@ -12,9 +12,9 @@ export type LabelItem = {
   labelOffset?: { dx: number; dy: number };
 };
 
-const MIN_GAP = 125; // 라벨 간 최소 가로 간격 (viewBox 단위, 상/하 레벨 교차 기준)
-const X_MIN = 90;
-const X_MAX = 1910;
+const MIN_GAP = 90; // 라벨 간 최소 가로 간격 (viewBox 단위, 3레벨 교차 기준)
+const X_MIN = 60;
+const X_MAX = 1940;
 
 function placeRow(
   list: LabelItem[],
@@ -47,12 +47,12 @@ export function layoutLabels(items: LabelItem[]): Record<string, LabelAnchor> {
 
   placeRow(
     auto.filter((d) => d.y < 425),
-    [70, 114],
+    [56, 96, 136], // 3레벨 교차 배치 — 장비가 많아도 겹치지 않게
     out,
   );
   placeRow(
     auto.filter((d) => d.y >= 425),
-    [742, 790], // 하단 여백: status 라인(+40)이 viewBox(850) 안에 들어오도록
+    [712, 756, 800], // 하단 여백: status 라인(+40)이 viewBox(850) 안에 들어오도록
     out,
   );
 
