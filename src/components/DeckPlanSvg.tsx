@@ -17,6 +17,8 @@
 type Props = {
   activeZone?: string | null;
   onZoneClick?: (zoneId: string) => void;
+  /** 레이어 가시성 (키: sole/zones/bulkheads/furniture/portlights, 기본 모두 표시) */
+  layers?: Record<string, boolean>;
 };
 
 const ZONES: { id: string; label: string; d: string }[] = [
@@ -39,7 +41,8 @@ function Zigzag({ x, y, n = 5, w = 11, h = 13 }: { x: number; y: number; n?: num
   return <path d={d} fill="none" stroke="#94a3b8" strokeWidth={1.5} />;
 }
 
-export default function DeckPlanSvg({ activeZone, onZoneClick }: Props) {
+export default function DeckPlanSvg({ activeZone, onZoneClick, layers }: Props) {
+  const on = (k: string) => layers?.[k] !== false;
   return (
     <>
       <defs>
@@ -81,6 +84,7 @@ export default function DeckPlanSvg({ activeZone, onZoneClick }: Props) {
       </g>
 
       {/* ---------- 바닥(솔) 플랭크 ---------- */}
+      {on("sole") && (
       <g id="sole">
         <rect x="566" y="316" width="336" height="148" fill="url(#sole)" />
         <rect x="912" y="352" width="300" height="168" fill="url(#sole)" />
@@ -88,7 +92,10 @@ export default function DeckPlanSvg({ activeZone, onZoneClick }: Props) {
         <rect x="212" y="480" width="318" height="176" fill="url(#sole)" />
       </g>
 
+      )}
+
       {/* ---------- 클릭 가능한 구역 ---------- */}
+      {on("zones") && (
       <g id="zones">
         {ZONES.map((z) => {
           const active = activeZone === z.id;
@@ -111,7 +118,10 @@ export default function DeckPlanSvg({ activeZone, onZoneClick }: Props) {
         })}
       </g>
 
+      )}
+
       {/* ---------- 격벽 + 문(스윙 아크) ---------- */}
+      {on("bulkheads") && (
       <g id="bulkheads" stroke="#475569" strokeWidth={3} strokeLinecap="round" fill="none">
         {/* 후방 선실 전방 격벽 (x=560), 문 2개 */}
         <line x1="560" y1="152" x2="560" y2="348" />
@@ -138,7 +148,10 @@ export default function DeckPlanSvg({ activeZone, onZoneClick }: Props) {
         </g>
       </g>
 
+      )}
+
       {/* ---------- 가구/장식 (비상호작용) ---------- */}
+      {on("furniture") && (
       <g id="furniture" fill="none" stroke="#94a3b8" strokeWidth={2} pointerEvents="none">
         {/* ===== 후방 선실 (좌현): 더블 베드 + 베개 ===== */}
         <g>
@@ -301,7 +314,10 @@ export default function DeckPlanSvg({ activeZone, onZoneClick }: Props) {
         </g>
       </g>
 
+      )}
+
       {/* ---------- 포트라이트(현창) ---------- */}
+      {on("portlights") && (
       <g id="portlights" fill="#dbeafe" stroke="#94a3b8" strokeWidth={1.5} pointerEvents="none">
         {/* 좌현 (상단) */}
         <rect x="430" y="160" width="64" height="11" rx="5" transform="rotate(-3 462 165)" />
@@ -318,6 +334,7 @@ export default function DeckPlanSvg({ activeZone, onZoneClick }: Props) {
         <rect x="1400" y="656" width="64" height="11" rx="5" transform="rotate(-12 1432 661)" />
         <rect x="1580" y="615" width="58" height="11" rx="5" transform="rotate(-20 1609 620)" />
       </g>
+      )}
     </>
   );
 }

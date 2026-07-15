@@ -15,9 +15,12 @@
 type Props = {
   side: "port" | "starboard";
   mirror?: boolean;
+  /** 레이어 가시성 (키: rigging/deck/interior/labels, 기본 모두 표시) */
+  layers?: Record<string, boolean>;
 };
 
-export default function DeckPlanSideSvg({ side, mirror = false }: Props) {
+export default function DeckPlanSideSvg({ side, mirror = false, layers }: Props) {
+  const on = (k: string) => layers?.[k] !== false;
   const isPort = side === "port";
   const mx = (x: number) => (mirror ? 2000 - x : x);
 
@@ -53,12 +56,14 @@ export default function DeckPlanSideSvg({ side, mirror = false }: Props) {
       {/* ============ 지오메트리 (미러 대상) ============ */}
       <g transform={mirror ? "translate(2000,0) scale(-1,1)" : undefined}>
         {/* ---------- 리깅 (마스트/붐/스테이) ---------- */}
+        {on("rigging") && (
         <g stroke="#94a3b8" fill="none">
           <line x1="1172" y1="48" x2="1898" y2="286" strokeWidth="1.5" />
           <line x1="1172" y1="48" x2="196" y2="300" strokeWidth="1.5" />
           <line x1="1172" y1="254" x2="1172" y2="44" strokeWidth="5" stroke="#64748b" />
           <line x1="1172" y1="150" x2="660" y2="164" strokeWidth="4" stroke="#64748b" />
         </g>
+        )}
 
         {/* ---------- 선체 프로파일 ---------- */}
         <path
@@ -90,6 +95,7 @@ export default function DeckPlanSideSvg({ side, mirror = false }: Props) {
         />
 
         {/* ---------- 데크 구조물 ---------- */}
+        {on("deck") && (<>
         <g stroke="#334155" strokeWidth="3" fill="#f1f5f9">
           {/* 코치루프(캐빈 트렁크) */}
           <path d="M500,306 C540,282 620,272 740,268 L1330,254 C1430,252 1500,257 1558,265 L500,306 Z" />
@@ -110,8 +116,10 @@ export default function DeckPlanSideSvg({ side, mirror = false }: Props) {
           <path d="M188,318 L188,282 L256,286" strokeWidth="2.5" />
           <path d="M1898,286 L1848,260 L1795,260" strokeWidth="2.5" />
         </g>
+        </>)}
 
         {/* ---------- 내부 단면 ---------- */}
+        {on("interior") && (<>
         {/* 빌지/탱크 공간 (솔 아래) */}
         <path
           d="M382,508 L1768,474 C1600,540 1300,566 1050,572 C820,576 560,554 382,508 Z"
@@ -208,9 +216,11 @@ export default function DeckPlanSideSvg({ side, mirror = false }: Props) {
             </g>
           </g>
         )}
+        </>)}
       </g>
 
       {/* ============ 구획 라벨 (미러 안 함, x 만 반영) ============ */}
+      {on("labels") && (
       <g fill="#94a3b8" fontSize="15" textAnchor="middle" stroke="none">
         {sections.map((s) => (
           <text key={s.t} x={mx(s.x)} y={s.y}>
@@ -218,6 +228,7 @@ export default function DeckPlanSideSvg({ side, mirror = false }: Props) {
           </text>
         ))}
       </g>
+      )}
 
       {/* ---------- 방향/뷰 표시 (좌상단 고정) ---------- */}
       <g fill="#64748b" stroke="none">

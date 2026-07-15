@@ -4,7 +4,11 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Toolbar from "./Toolbar";
-import DeckPlan from "./DeckPlan";
+import DeckPlan, { type ShapeDraft } from "./DeckPlan";
+import EditToolbar, { type EditTool } from "./edit/EditToolbar";
+import ShapeProps from "./edit/ShapeProps";
+import { DEFAULT_LAYERS, type PlanLayersConfig } from "@/lib/planLayers";
+import type { PlanShape } from "@/lib/shapes/types";
 
 // three.js 는 클라이언트 전용 — SSR 제외
 const Deck3D = dynamic(() => import("./Deck3D"), {
@@ -33,9 +37,13 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [view, setView] = useState<DeckView>("top");
   const [editMode, setEditMode] = useState(false);
+  const [editTool, setEditTool] = useState<EditTool>("device");
   const [showLabels, setShowLabels] = useState(true);
   const [panelOpen, setPanelOpen] = useState(true);
   const [pending, setPending] = useState<{ x: number; y: number } | null>(null);
+  const [shapes, setShapes] = useState<PlanShape[]>([]);
+  const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
+  const [layers, setLayers] = useState<PlanLayersConfig>(DEFAULT_LAYERS);
   const [draft, setDraft] = useState<DraftDevice | null>(null);
   const [connected, setConnected] = useState(false);
   const [source, setSource] = useState<string | null>(null);
@@ -45,10 +53,60 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
     setDevices(await res.json());
   }, []);
 
-  // 초기 디바이스 로드
+  const loadShapes = useCallback(async () => {
+    const res = await fetch("/api/shapes");
+    if (res.ok) setShapes(await res.json());
+  }, []);
+
+  const loadLayers = useCallback(async () => {
+    const res = await fetch("/api/plan-layers");
+    if (res.ok) setLayers(await res.json());
+  }, []);
+
+  // 초기 로드
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    void loadShapes();
+    void loadLayers();
+  }, [refresh, loadShapes, loadLayers]);
+
+  /* ---- 도형 CRUD ---- */
+  const createShape = async (draft: ShapeDraft) => {
+    const res = await fetch("/api/shapes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(draft),
+    });
+    if (res.ok) {
+      const s = (await res.json()) as PlanShape;
+      await loadShapes();
+      setSelectedShapeId(s.id);
+      setEditTool("select"); // 그린 직후 바로 속성 편집 가능
+    }
+  };
+  const updateShape = async (id: string, patch: Partial<PlanShape>) => {
+    // 낙관적 반영
+    setShapes((arr) => arr.map((s) => (s.id === id ? { ...s, ...patch, style: patch.style ? { ...s.style, ...patch.style } : s.style } : s)));
+    await fetch("/api/shapes", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...patch }),
+    });
+    await loadShapes();
+  };
+  const removeShape = async (id: string) => {
+    await fetch(`/api/shapes?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (selectedShapeId === id) setSelectedShapeId(null);
+    await loadShapes();
+  };
+  const changeLayers = async (patch: Partial<PlanLayersConfig>) => {
+    const res = await fetch("/api/plan-layers", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (res.ok) setLayers(await res.json());
+  };
 
   // 텔레메트리 SSE 구독
   useEffect(() => {
@@ -153,6 +211,9 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
             readings={readings}
             selectedId={selectedId}
             onSelect={handleSelect}
+            shapes={shapes}
+            layers={layers}
+            onLayersChange={changeLayers}
           />
         ) : (
           <DeckPlan
@@ -161,13 +222,50 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
             selectedId={selectedId}
             view={view}
             editMode={editMode}
+            editTool={editTool}
             showLabels={showLabels}
             pending={pending}
+            shapes={shapes}
+            selectedShapeId={selectedShapeId}
+            layers={layers}
             onSelect={handleSelect}
             onPlace={handlePlace}
+            onShapeCreate={createShape}
+            onShapeMove={updateShape}
+            onShapeDelete={removeShape}
+            onShapeSelect={setSelectedShapeId}
           />
         )}
       </div>
+
+      {/* 편집 도구 툴바 (2D 뷰) */}
+      {editMode && view !== "3d" && (
+        <EditToolbar
+          view={view}
+          tool={editTool}
+          onToolChange={(t) => {
+            setEditTool(t);
+            setPending(null);
+            if (t !== "select") setSelectedShapeId(null);
+          }}
+          layers={layers}
+          onLayersChange={changeLayers}
+        />
+      )}
+
+      {/* 선택 도형 속성 패널 */}
+      {editMode && view !== "3d" && editTool === "select" && selectedShapeId && (() => {
+        const s = shapes.find((x) => x.id === selectedShapeId);
+        if (!s) return null;
+        return (
+          <ShapeProps
+            shape={s}
+            onChange={(patch) => updateShape(s.id, patch)}
+            onDelete={() => removeShape(s.id)}
+            onClose={() => setSelectedShapeId(null)}
+          />
+        );
+      })()}
 
       {/* 떠 있는 헤더 */}
       <Toolbar
@@ -181,6 +279,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
         onToggleEdit={() => {
           setEditMode((v) => !v);
           setPending(null);
+          setSelectedShapeId(null);
         }}
         showLabels={showLabels}
         onToggleLabels={() => setShowLabels((v) => !v)}

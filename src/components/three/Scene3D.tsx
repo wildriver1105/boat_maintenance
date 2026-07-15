@@ -11,6 +11,8 @@ import { Html, OrbitControls, RoundedBox } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { toWorld, type Section } from "@/lib/three/coords";
 import { CATEGORY_META, STATUS_META, type Device, type DeviceReading } from "@/lib/types";
+import { layerOn, type PlanLayersConfig } from "@/lib/planLayers";
+import type { PlanShape } from "@/lib/shapes/types";
 import { summarize } from "@/lib/format";
 
 /* ---------------- 선체/데크 지오메트리 (단면 로프트) ---------------- */
@@ -353,6 +355,80 @@ function Exterior() {
   );
 }
 
+/* ---------------- 사용자 도형 (평면 도형의 3D 압출) ---------------- */
+
+const S2W = { x: (x: number) => (x - 1000) / 100, z: (y: number) => (y - 425) * 0.0085 };
+
+function ExtrudedPolygon({ shape }: { shape: PlanShape }) {
+  const geo = useMemo(() => {
+    const pts = shape.points ?? [];
+    if (pts.length < 3) return null;
+    const s = new THREE.Shape();
+    // rotation-x=-90° 가 (x, y, z_extrude)→(x, z_extrude, -y) 이므로 y 에 -Z 를 넣는다
+    s.moveTo(S2W.x(pts[0].x), -S2W.z(pts[0].y));
+    for (let i = 1; i < pts.length; i++) s.lineTo(S2W.x(pts[i].x), -S2W.z(pts[i].y));
+    s.closePath();
+    const h = Math.max(0.05, shape.height3d ?? 0.5);
+    return new THREE.ExtrudeGeometry(s, { depth: h, bevelEnabled: false });
+  }, [shape]);
+  if (!geo) return null;
+  const col = shape.style.fill !== "none" ? shape.style.fill : shape.style.stroke;
+  return (
+    <mesh geometry={geo} rotation-x={-Math.PI / 2} position={[0, shape.elevation3d ?? -0.3, 0]} castShadow>
+      <meshStandardMaterial color={col} roughness={0.8} transparent opacity={0.95} />
+    </mesh>
+  );
+}
+
+function UserShapes3D({ shapes }: { shapes: PlanShape[] }) {
+  return (
+    <group>
+      {shapes
+        .filter((s) => s.view === "top" && s.show3d !== false)
+        .map((s) => {
+          const h = Math.max(0.05, s.height3d ?? 0.5);
+          const base = s.elevation3d ?? -0.3;
+          const yC = base + h / 2;
+          const col = s.style.fill !== "none" ? s.style.fill : s.style.stroke;
+          if (s.kind === "rect") {
+            return (
+              <mesh key={s.id} position={[S2W.x(s.x! + s.w! / 2), yC, S2W.z(s.y! + s.h! / 2)]} castShadow>
+                <boxGeometry args={[s.w! / 100, h, s.h! * 0.0085]} />
+                <meshStandardMaterial color={col} roughness={0.8} transparent opacity={0.95} />
+              </mesh>
+            );
+          }
+          if (s.kind === "ellipse") {
+            const rx = s.rx! / 100;
+            const rz = s.ry! * 0.0085;
+            return (
+              <mesh key={s.id} position={[S2W.x(s.cx!), yC, S2W.z(s.cy!)]} scale={[1, 1, rz / (rx || 1)]} castShadow>
+                <cylinderGeometry args={[rx, rx, h, 24]} />
+                <meshStandardMaterial color={col} roughness={0.8} transparent opacity={0.95} />
+              </mesh>
+            );
+          }
+          if (s.kind === "line" && s.points?.length === 2) {
+            const [a, b] = s.points;
+            const ax = S2W.x(a.x), az = S2W.z(a.y), bx = S2W.x(b.x), bz = S2W.z(b.y);
+            const len = Math.hypot(bx - ax, bz - az);
+            return (
+              <mesh key={s.id} position={[(ax + bx) / 2, yC, (az + bz) / 2]}
+                rotation-y={-Math.atan2(bz - az, bx - ax)} castShadow>
+                <boxGeometry args={[Math.max(0.05, len), h, 0.06]} />
+                <meshStandardMaterial color={col} roughness={0.8} transparent opacity={0.95} />
+              </mesh>
+            );
+          }
+          if ((s.kind === "polygon" || s.kind === "path") && (s.points?.length ?? 0) >= 3) {
+            return <ExtrudedPolygon key={s.id} shape={s} />;
+          }
+          return null;
+        })}
+    </group>
+  );
+}
+
 /* ---------------- 디바이스 마커 ---------------- */
 
 function DeviceMarkers({
@@ -560,12 +636,16 @@ export default function Scene3D({
   readings,
   selectedId,
   onSelect,
+  shapes = [],
+  layers,
 }: {
   section: Section;
   devices: Device[];
   readings: Record<string, DeviceReading>;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  shapes?: PlanShape[];
+  layers?: PlanLayersConfig;
 }) {
   const hullGeo = useMemo(() => buildLoft("hull"), []);
   const hullMat = useRef<THREE.MeshStandardMaterial>(null);
@@ -592,10 +672,12 @@ export default function Scene3D({
       <color attach="background" args={["#e8eef4"]} />
 
       {/* 물 */}
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow>
-        <circleGeometry args={[70, 48]} />
-        <meshStandardMaterial color="#7dd3fc" transparent opacity={0.55} roughness={0.2} />
-      </mesh>
+      {layerOn(layers?.three, "water") && (
+        <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow>
+          <circleGeometry args={[70, 48]} />
+          <meshStandardMaterial color="#7dd3fc" transparent opacity={0.55} roughness={0.2} />
+        </mesh>
+      )}
 
       {/* 보트 (클리핑 대상 그룹) */}
       <group ref={boatGroup}>
@@ -624,12 +706,16 @@ export default function Scene3D({
           <meshStandardMaterial color="#94a3b8" roughness={0.4} transparent />
         </mesh>
 
-        <group ref={extGroup}>
+        <group ref={extGroup} visible={layerOn(layers?.three, "exterior")}>
           <Exterior />
         </group>
         <group ref={intGroup}>
-          <Interior />
+          <group visible={layerOn(layers?.three, "interior")}>
+            <Interior />
+          </group>
         </group>
+        {/* 사용자 도형 (평면에서 그린 것을 압출) */}
+        <UserShapes3D shapes={shapes} />
       </group>
 
       <DeviceMarkers
