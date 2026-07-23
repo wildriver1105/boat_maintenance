@@ -49,3 +49,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# imported 3D models (user content, can be large)
+/data/models/
+/data/models.json

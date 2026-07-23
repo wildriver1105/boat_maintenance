@@ -79,6 +79,25 @@ Oceanis Clipper 473 유지보수 디스플레이의 모든 기능은 **모듈화
 - `side`: `rigging` `deck` `interior` `labels`
 - `three`: `exterior` `interior` `water`
 
+## 4b. 3D 모델 임포트/엑스포트 (GLB ↔ Blender)
+
+**엑스포트**: 3D 뷰 → 📦 모델 → "씬 내보내기(.glb)" — 선체+내부+사용자 도형 전체가
+`oceanis473-scene.glb` 로 다운로드. 블렌더에서 File→Import→glTF 2.0 으로 열어 이어서 작업.
+
+**임포트** (블렌더/커뮤니티 에셋): File→Export→glTF 2.0(.glb, +Y up) 로 만든 파일을 업로드.
+
+| 동작 | 요청 |
+|---|---|
+| 목록 | `GET /api/models` |
+| 업로드 | `POST /api/models` — multipart: `file`(.glb, ≤100MB), `name` |
+| 배치/표시 수정 | `PUT /api/models` `{id, x?, y?, z?, rotYDeg?, scale?, visible?, name?}` |
+| 삭제 | `DELETE /api/models?id=<id>` |
+| 파일 | `GET /api/models/file/<file>` (model/gltf-binary) |
+
+- 배치 좌표는 3D 월드 단위(≈m): 선체 중앙 (0,0,0), 선수 +X, 수선 Y=0.
+- 임포트 모델도 섹션 클리핑(돌하우스 컷)에 포함. UI: 3D 뷰 📦 모델 패널에서 업로드·위치·회전·스케일·표시 관리.
+- 저장: 파일 `data/models/<uuid>.glb`, 메타 `data/models.json` (둘 다 gitignore).
+
 ## 5. 프로시저 (체크리스트 + 감사 기록)
 
 템플릿: `data/procedures.json` · 실행 로그: `data/procedure-runs.json` (gitignore)

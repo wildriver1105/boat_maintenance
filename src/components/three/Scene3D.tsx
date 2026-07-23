@@ -5,9 +5,10 @@
 "use client";
 
 import * as THREE from "three";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Html, OrbitControls, RoundedBox } from "@react-three/drei";
+import { Html, OrbitControls, RoundedBox, useGLTF } from "@react-three/drei";
+import type { ImportedModel } from "@/lib/models3d/registry";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { toWorld, type Section } from "@/lib/three/coords";
 import { CATEGORY_META, STATUS_META, type Device, type DeviceReading } from "@/lib/types";
@@ -429,6 +430,32 @@ function UserShapes3D({ shapes }: { shapes: PlanShape[] }) {
   );
 }
 
+/* ---------------- 임포트된 GLB 모델 ---------------- */
+
+function ImportedModelMesh({ m }: { m: ImportedModel }) {
+  const { scene } = useGLTF(`/api/models/file/${m.file}`);
+  const cloned = useMemo(() => scene.clone(true), [scene]);
+  return (
+    <primitive
+      object={cloned}
+      position={[m.x, m.y, m.z]}
+      rotation-y={(m.rotYDeg * Math.PI) / 180}
+      scale={m.scale}
+      visible={m.visible !== false}
+    />
+  );
+}
+
+function ImportedModels({ models }: { models: ImportedModel[] }) {
+  return (
+    <Suspense fallback={null}>
+      {models.map((m) => (
+        <ImportedModelMesh key={m.id} m={m} />
+      ))}
+    </Suspense>
+  );
+}
+
 /* ---------------- 디바이스 마커 ---------------- */
 
 function DeviceMarkers({
@@ -499,12 +526,15 @@ function Rig({
   intGroup,
   hullMat,
   boatGroup,
+  clipKey,
 }: {
   section: Section;
   extGroup: React.RefObject<THREE.Group | null>;
   intGroup: React.RefObject<THREE.Group | null>;
   hullMat: React.RefObject<THREE.MeshStandardMaterial | null>;
   boatGroup: React.RefObject<THREE.Group | null>;
+  /** 임포트 모델 로드 시 클리핑 재적용 트리거 */
+  clipKey?: string;
 }) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const { camera } = useThree();
@@ -538,7 +568,7 @@ function Rig({
     if (intGroup.current) intGroup.current.visible = false;
   }, [extGroup, intGroup]);
 
-  // 섹션 변경 → 카메라 트윈 시작 + 클리핑 평면 적용
+  // 섹션 변경 → 카메라 트윈 시작 + 클리핑 평면 적용 (모델 로드 시 재적용)
   useEffect(() => {
     tween.current.active = true;
     const planes = section.range
@@ -556,7 +586,7 @@ function Rig({
         }
       }
     });
-  }, [section, boatGroup]);
+  }, [section, boatGroup, clipKey]);
 
   useFrame((_, dt) => {
     const controls = controlsRef.current;
@@ -639,6 +669,8 @@ export default function Scene3D({
   onSelect,
   shapes = [],
   layers,
+  models = [],
+  exportRef,
 }: {
   section: Section;
   devices: Device[];
@@ -647,12 +679,68 @@ export default function Scene3D({
   onSelect: (id: string | null) => void;
   shapes?: PlanShape[];
   layers?: PlanLayersConfig;
+  models?: ImportedModel[];
+  /** 부모가 호출할 GLB 내보내기 함수를 여기에 넣어준다 */
+  exportRef?: React.MutableRefObject<(() => void) | null>;
 }) {
   const hullGeo = useMemo(() => buildLoft("hull"), []);
   const hullMat = useRef<THREE.MeshStandardMaterial>(null);
   const extGroup = useRef<THREE.Group>(null);
   const intGroup = useRef<THREE.Group>(null);
   const boatGroup = useRef<THREE.Group>(null);
+
+  // GLB 내보내기 — 페이드/레이어 상태를 원복 가능한 형태로 정규화(모두 표시·불투명)해서 저장
+  useEffect(() => {
+    if (!exportRef) return;
+    exportRef.current = async () => {
+      const g = boatGroup.current;
+      if (!g) return;
+      const savedOpacity: [THREE.Material, number][] = [];
+      const savedVisible: [THREE.Object3D, boolean][] = [];
+      g.traverse((o) => {
+        savedVisible.push([o, o.visible]);
+        o.visible = true;
+        const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+        if (m) {
+          for (const mat of Array.isArray(m) ? m : [m]) {
+            savedOpacity.push([mat, mat.opacity]);
+            mat.opacity = 1;
+          }
+        }
+      });
+      const restore = () => {
+        savedOpacity.forEach(([m, op]) => (m.opacity = op));
+        savedVisible.forEach(([o, v]) => (o.visible = v));
+      };
+      try {
+        const { GLTFExporter } = await import("three/examples/jsm/exporters/GLTFExporter.js");
+        new GLTFExporter().parse(
+          g,
+          (result) => {
+            restore();
+            const blob = new Blob([result as ArrayBuffer], { type: "model/gltf-binary" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "oceanis473-scene.glb";
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+          },
+          (err) => {
+            restore();
+            console.error("GLB export 실패:", err);
+          },
+          { binary: true, onlyVisible: false },
+        );
+      } catch (err) {
+        restore();
+        console.error("GLB export 실패:", err);
+      }
+    };
+    return () => {
+      exportRef.current = null;
+    };
+  }, [exportRef]);
 
   return (
     <>
@@ -717,6 +805,8 @@ export default function Scene3D({
         </group>
         {/* 사용자 도형 (평면에서 그린 것을 압출) */}
         <UserShapes3D shapes={shapes} />
+        {/* 임포트된 GLB 모델 */}
+        <ImportedModels models={models} />
       </group>
 
       <DeviceMarkers
@@ -733,6 +823,7 @@ export default function Scene3D({
         intGroup={intGroup}
         hullMat={hullMat}
         boatGroup={boatGroup}
+        clipKey={models.map((m) => m.id).join(",")}
       />
     </>
   );
