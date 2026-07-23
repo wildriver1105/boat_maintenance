@@ -11,26 +11,21 @@ import { Html, OrbitControls, RoundedBox, useGLTF } from "@react-three/drei";
 import type { ImportedModel } from "@/lib/models3d/registry";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { toWorld, type Section } from "@/lib/three/coords";
+import { HULL } from "@/lib/hull";
+import { PX_PER_M } from "@/lib/units";
 import { CATEGORY_META, STATUS_META, type Device, type DeviceReading } from "@/lib/types";
 import { layerOn, type PlanLayersConfig } from "@/lib/planLayers";
 import type { PlanShape } from "@/lib/shapes/types";
 import { summarize } from "@/lib/format";
 
-/* ---------------- 선체/데크 지오메트리 (단면 로프트) ---------------- */
+/* ---------------- 선체/데크 지오메트리 (단면 로프트) ----------------
+ * ★ 단일 소스: data/hull.json (2D 도면과 동일 데이터, 단위 = 미터) */
 
-const STATIONS = [
-  { x: -8.45, hb: 1.55, sheer: 1.02, bottom: -0.3 }, // 트랜섬
-  { x: -7.0, hb: 2.05, sheer: 0.97, bottom: -0.55 },
-  { x: -5.0, hb: 2.26, sheer: 0.93, bottom: -0.72 },
-  { x: -3.0, hb: 2.34, sheer: 0.9, bottom: -0.8 },
-  { x: -1.0, hb: 2.33, sheer: 0.9, bottom: -0.82 },
-  { x: 1.0, hb: 2.22, sheer: 0.92, bottom: -0.8 },
-  { x: 3.0, hb: 1.98, sheer: 0.96, bottom: -0.72 },
-  { x: 5.0, hb: 1.58, sheer: 1.01, bottom: -0.6 },
-  { x: 7.0, hb: 1.0, sheer: 1.09, bottom: -0.44 },
-  { x: 8.3, hb: 0.4, sheer: 1.18, bottom: -0.22 },
-  { x: 9.0, hb: 0.05, sheer: 1.25, bottom: 0.05 }, // 선수 스템
-];
+const STATIONS = HULL.stations;
+
+/** 레거시 가구/외장 상수(구 월드 스케일: 길이 17.45·반폭 2.34) → 미터 월드 보정.
+ *  기존 좌표를 유지한 채 그룹 스케일로 새 선체(14.33m·2.19m)에 맞춘다. */
+const LEGACY_SCALE: [number, number, number] = [14.33 / 17.45, 1, 2.19 / 2.34];
 
 function buildLoft(kind: "hull" | "deck"): THREE.BufferGeometry {
   const C = 29;
@@ -71,6 +66,31 @@ function buildLoft(kind: "hull" | "deck"): THREE.BufferGeometry {
   g.setIndex(idx);
   g.computeVertexNormals();
   return g;
+}
+
+/** 킬/러더 — hull.json 의 측면 프로파일(m)을 z 방향으로 압출 (2D 측면도와 단일 소스) */
+function Appendage({
+  profile,
+  thickness,
+}: {
+  profile: { x: number; y: number }[];
+  thickness: number;
+}) {
+  const geo = useMemo(() => {
+    const s = new THREE.Shape();
+    s.moveTo(profile[0].x, profile[0].y);
+    for (let i = 1; i < profile.length; i++) s.lineTo(profile[i].x, profile[i].y);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: thickness, bevelEnabled: false });
+    g.translate(0, 0, -thickness / 2);
+    g.computeVertexNormals();
+    return g;
+  }, [profile, thickness]);
+  return (
+    <mesh geometry={geo} castShadow>
+      <meshStandardMaterial color="#94a3b8" roughness={0.4} transparent />
+    </mesh>
+  );
 }
 
 /* ---------------- 소품 ---------------- */
@@ -281,10 +301,14 @@ function Exterior() {
 
   return (
     <group>
-      {/* 데크 (티크) */}
+      {/* 데크 (티크) — hull.json 스테이션에서 생성(미터), 스케일 보정 없음 */}
       <mesh geometry={deckGeo} castShadow receiveShadow>
         <meshStandardMaterial color="#d8c8a4" roughness={0.85} side={THREE.DoubleSide} transparent />
       </mesh>
+
+      {/* ---- 이하 레거시 상수 외장(코치루프/콕핏/리깅) — 미터 월드로 스케일 보정.
+           새 선체의 실측 건현이 구 기준보다 높아 y 오프셋(+0.42)으로 데크 위로 올린다 ---- */}
+      <group scale={LEGACY_SCALE} position={[0, 0.42, 0]}>
 
       {/* 코치루프 */}
       <mesh geometry={roofGeo} rotation-x={-Math.PI / 2} position={[0, 1.0, 0]} castShadow>
@@ -352,13 +376,15 @@ function Exterior() {
       <Rod from={[-8.35, 1.05, -1.2]} to={[-8.35, 1.62, -1.2]} r={0.022} />
       <Rod from={[-8.35, 1.05, 1.2]} to={[-8.35, 1.62, 1.2]} r={0.022} />
       <Rod from={[-8.35, 1.62, -1.2]} to={[-8.35, 1.62, 1.2]} r={0.022} />
+
+      </group>{/* /레거시 스케일 보정 */}
     </group>
   );
 }
 
 /* ---------------- 사용자 도형 (평면 도형의 3D 압출) ---------------- */
 
-const S2W = { x: (x: number) => (x - 1000) / 100, z: (y: number) => (y - 425) * 0.0085 };
+const S2W = { x: (x: number) => (x - 1000) / PX_PER_M, z: (y: number) => (y - 425) / PX_PER_M };
 
 function ExtrudedPolygon({ shape }: { shape: PlanShape }) {
   const geo = useMemo(() => {
@@ -394,14 +420,14 @@ function UserShapes3D({ shapes }: { shapes: PlanShape[] }) {
           if (s.kind === "rect") {
             return (
               <mesh key={s.id} position={[S2W.x(s.x! + s.w! / 2), yC, S2W.z(s.y! + s.h! / 2)]} castShadow>
-                <boxGeometry args={[s.w! / 100, h, s.h! * 0.0085]} />
+                <boxGeometry args={[s.w! / PX_PER_M, h, s.h! / PX_PER_M]} />
                 <meshStandardMaterial color={col} roughness={0.8} transparent opacity={0.95} />
               </mesh>
             );
           }
           if (s.kind === "ellipse") {
-            const rx = s.rx! / 100;
-            const rz = s.ry! * 0.0085;
+            const rx = s.rx! / PX_PER_M;
+            const rz = s.ry! / PX_PER_M;
             return (
               <mesh key={s.id} position={[S2W.x(s.cx!), yC, S2W.z(s.cy!)]} scale={[1, 1, rz / (rx || 1)]} castShadow>
                 <cylinderGeometry args={[rx, rx, h, 24]} />
@@ -538,35 +564,30 @@ function Rig({
 }) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const { camera } = useThree();
-  const extMats = useRef<THREE.Material[]>([]);
-  const intMats = useRef<THREE.Material[]>([]);
   const tween = useRef({ active: false });
   const interiorRef = useRef(false);
 
-  // 외장/내부 머티리얼 수집 (1회)
-  useEffect(() => {
-    const collect = (
-      group: React.RefObject<THREE.Group | null>,
-      store: React.MutableRefObject<THREE.Material[]>,
-    ) => {
-      const mats: THREE.Material[] = [];
-      group.current?.traverse((o) => {
-        if ((o as THREE.Mesh).isMesh) {
-          const m = (o as THREE.Mesh).material;
-          for (const mat of Array.isArray(m) ? m : [m]) {
-            mat.transparent = true;
-            mats.push(mat);
-          }
+  /** 그룹 내 모든 머티리얼 opacity 를 target 으로 damp.
+   *  (머티리얼 목록을 캐시하지 않고 매 프레임 traverse — HMR/재생성에도 안전) */
+  const fadeGroup = (
+    group: React.RefObject<THREE.Group | null>,
+    target: number,
+    d: number,
+  ): number => {
+    let last = target;
+    group.current?.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) {
+        const m = (o as THREE.Mesh).material;
+        for (const mat of Array.isArray(m) ? m : [m]) {
+          mat.transparent = true;
+          mat.opacity = THREE.MathUtils.damp(mat.opacity, target, 7, d);
+          mat.depthWrite = mat.opacity > 0.5;
+          last = mat.opacity;
         }
-      });
-      store.current = mats;
-    };
-    collect(extGroup, extMats);
-    collect(intGroup, intMats);
-    // 시작은 외부 모드: 내부는 숨김에서 시작
-    for (const m of intMats.current) m.opacity = 0;
-    if (intGroup.current) intGroup.current.visible = false;
-  }, [extGroup, intGroup]);
+      }
+    });
+    return last;
+  };
 
   // 섹션 변경 → 카메라 트윈 시작 + 클리핑 평면 적용 (모델 로드 시 재적용)
   useEffect(() => {
@@ -627,17 +648,11 @@ function Rig({
     const extTarget = interiorRef.current ? 0.07 : 1;
     const hullTarget = interiorRef.current ? 0.14 : 1;
     const intTarget = interiorRef.current ? 1 : 0;
-    for (const m of extMats.current) {
-      m.opacity = THREE.MathUtils.damp(m.opacity, extTarget, 7, d);
-      m.depthWrite = m.opacity > 0.5;
+    fadeGroup(extGroup, extTarget, d);
+    const intOpacity = fadeGroup(intGroup, intTarget, d);
+    if (intGroup.current) {
+      intGroup.current.visible = interiorRef.current || intOpacity > 0.02;
     }
-    let intOpacity = intTarget;
-    for (const m of intMats.current) {
-      m.opacity = THREE.MathUtils.damp(m.opacity, intTarget, 7, d);
-      m.depthWrite = m.opacity > 0.5;
-      intOpacity = m.opacity;
-    }
-    if (intGroup.current) intGroup.current.visible = intOpacity > 0.02;
     const hm = hullMat.current;
     if (hm) {
       hm.opacity = THREE.MathUtils.damp(hm.opacity, hullTarget, 7, d);
@@ -781,25 +796,15 @@ export default function Scene3D({
           />
         </mesh>
 
-        {/* 킬 + 벌브 + 러더 */}
-        <mesh position={[0.4, -1.55, 0]} castShadow>
-          <boxGeometry args={[1.5, 1.5, 0.26]} />
-          <meshStandardMaterial color="#94a3b8" roughness={0.4} transparent />
-        </mesh>
-        <mesh position={[0.35, -2.25, 0]} rotation-z={Math.PI / 2}>
-          <capsuleGeometry args={[0.17, 1.5, 6, 12]} />
-          <meshStandardMaterial color="#94a3b8" roughness={0.4} transparent />
-        </mesh>
-        <mesh position={[-6.9, -1.02, 0]} castShadow>
-          <boxGeometry args={[0.42, 1.1, 0.1]} />
-          <meshStandardMaterial color="#94a3b8" roughness={0.4} transparent />
-        </mesh>
+        {/* 킬 + 러더 — hull.json 측면 프로파일 압출 (2D 측면도와 동일 데이터) */}
+        <Appendage profile={HULL.keel.profile} thickness={HULL.keel.thickness} />
+        <Appendage profile={HULL.rudder.profile} thickness={HULL.rudder.thickness} />
 
         <group ref={extGroup} visible={layerOn(layers?.three, "exterior")}>
           <Exterior />
         </group>
         <group ref={intGroup}>
-          <group visible={layerOn(layers?.three, "interior")}>
+          <group visible={layerOn(layers?.three, "interior")} scale={LEGACY_SCALE}>
             <Interior />
           </group>
         </group>

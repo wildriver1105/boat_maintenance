@@ -12,6 +12,8 @@
 
 "use client";
 
+import { hullSidePath, keelSidePath, rudderSidePath } from "@/lib/hull";
+
 type Props = {
   side: "port" | "starboard";
   mirror?: boolean;
@@ -65,34 +67,12 @@ export default function DeckPlanSideSvg({ side, mirror = false, layers }: Props)
         </g>
         )}
 
-        {/* ---------- 선체 프로파일 ---------- */}
-        <path
-          d="M175,320
-             C600,295 1200,275 1660,262
-             C1790,258 1885,268 1932,286
-             C1918,350 1910,415 1900,468
-             C1650,542 1350,568 1050,574
-             C800,578 550,560 380,535
-             C300,523 250,510 232,498
-             Z"
-          fill="#f8fafc"
-          stroke="#334155"
-          strokeWidth="5"
-        />
+        {/* ---------- 선체 프로파일 (data/hull.json — 평면/3D 와 단일 소스) ---------- */}
+        <path d={hullSidePath()} fill="#f8fafc" stroke="#334155" strokeWidth="5" />
         {/* 킬 */}
-        <path
-          d="M870,568 C880,676 895,752 918,756 L1018,750 C1040,698 1052,620 1058,562 Z"
-          fill="#e2e8f0"
-          stroke="#334155"
-          strokeWidth="3"
-        />
+        <path d={keelSidePath()} fill="#e2e8f0" stroke="#334155" strokeWidth="3" />
         {/* 러더 */}
-        <path
-          d="M332,528 C326,600 336,676 356,698 L394,688 C400,620 398,562 396,532 Z"
-          fill="#e2e8f0"
-          stroke="#334155"
-          strokeWidth="3"
-        />
+        <path d={rudderSidePath()} fill="#e2e8f0" stroke="#334155" strokeWidth="3" />
 
         {/* ---------- 데크 구조물 ---------- */}
         {on("deck") && (<>

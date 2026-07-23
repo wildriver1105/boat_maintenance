@@ -14,6 +14,8 @@
 
 "use client";
 
+import { hullTopPath } from "@/lib/hull";
+
 type Props = {
   activeZone?: string | null;
   onZoneClick?: (zoneId: string) => void;
@@ -52,35 +54,11 @@ export default function DeckPlanSvg({ activeZone, onZoneClick, layers }: Props) 
         </pattern>
       </defs>
 
-      {/* ---------- 선체 ---------- */}
+      {/* ---------- 선체 (data/hull.json 에서 생성 — 측면/3D 와 단일 소스) ---------- */}
       <g id="hull">
-        <path
-          d="M160,315
-             C178,215 300,162 520,152
-             C840,142 1120,150 1380,192
-             C1620,230 1800,315 1935,425
-             C1800,535 1620,620 1380,658
-             C1120,700 840,708 520,698
-             C300,688 178,635 160,535
-             C144,462 144,388 160,315 Z"
-          fill="#f8fafc"
-          stroke="#334155"
-          strokeWidth={5}
-        />
+        <path d={hullTopPath(0)} fill="#f8fafc" stroke="#334155" strokeWidth={5} />
         {/* 데크 안쪽 라인 */}
-        <path
-          d="M186,330
-             C202,238 315,185 525,176
-             C840,166 1115,174 1370,214
-             C1595,250 1762,330 1878,425
-             C1762,520 1595,600 1370,636
-             C1115,684 840,692 525,674
-             C315,665 202,612 186,520
-             C172,455 172,395 186,330 Z"
-          fill="none"
-          stroke="#cbd5e1"
-          strokeWidth={2}
-        />
+        <path d={hullTopPath(0.18)} fill="none" stroke="#cbd5e1" strokeWidth={2} />
       </g>
 
       {/* ---------- 바닥(솔) 플랭크 ---------- */}
