@@ -2,6 +2,35 @@
 "use client";
 
 import { PALETTE, type PlanShape } from "@/lib/shapes/types";
+import { distPx, fmtM, mToPx, pxToM } from "@/lib/units";
+
+/** 미터 입력 필드 (px 로 저장) */
+function MeterField({
+  label,
+  px,
+  onPx,
+}: {
+  label: string;
+  px: number;
+  onPx: (px: number) => void;
+}) {
+  return (
+    <label className="text-xs text-slate-500">
+      {label}
+      <input
+        type="number"
+        step={0.05}
+        min={0.05}
+        value={Number(pxToM(px).toFixed(2))}
+        onChange={(e) => {
+          const m = Number(e.target.value);
+          if (m > 0) onPx(Math.round(mToPx(m)));
+        }}
+        className="mt-0.5 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-sky-500"
+      />
+    </label>
+  );
+}
 
 export default function ShapeProps({
   shape,
@@ -28,6 +57,35 @@ export default function ShapeProps({
         placeholder="이름 (예: 발전기)"
         className="mt-2 w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-sky-500"
       />
+
+      {/* 실측 크기 (m) */}
+      <div className="mt-3 text-xs font-medium text-slate-500">실측 크기 (m)</div>
+      {shape.kind === "rect" && (
+        <div className="mt-1 grid grid-cols-2 gap-2">
+          <MeterField label="가로" px={shape.w ?? 0} onPx={(w) => onChange({ w })} />
+          <MeterField label="세로" px={shape.h ?? 0} onPx={(h) => onChange({ h })} />
+        </div>
+      )}
+      {shape.kind === "ellipse" && (
+        <div className="mt-1 grid grid-cols-2 gap-2">
+          <MeterField label="가로 지름" px={(shape.rx ?? 0) * 2} onPx={(d) => onChange({ rx: Math.round(d / 2) })} />
+          <MeterField label="세로 지름" px={(shape.ry ?? 0) * 2} onPx={(d) => onChange({ ry: Math.round(d / 2) })} />
+        </div>
+      )}
+      {shape.kind === "line" && shape.points?.length === 2 && (
+        <p className="mt-1 text-sm font-medium text-slate-700">
+          길이 {fmtM(distPx(shape.points[0], shape.points[1]))}
+        </p>
+      )}
+      {(shape.kind === "polygon" || shape.kind === "path") && (shape.points?.length ?? 0) > 1 && (() => {
+        const xs = shape.points!.map((p) => p.x);
+        const ys = shape.points!.map((p) => p.y);
+        return (
+          <p className="mt-1 text-sm text-slate-600">
+            바운딩 {fmtM(Math.max(...xs) - Math.min(...xs))} × {fmtM(Math.max(...ys) - Math.min(...ys))}
+          </p>
+        );
+      })()}
 
       {/* 선 색 */}
       <div className="mt-3 text-xs font-medium text-slate-500">선 색</div>

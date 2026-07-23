@@ -4,7 +4,7 @@
 // 도형/디바이스 좌표는 항상 "정규 좌표"로 저장하고 표시할 때만 반전한다.
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DeckPlanSvg from "./DeckPlanSvg";
 import DeckPlanSideSvg from "./DeckPlanSideSvg";
 import DeviceMarker from "./DeviceMarker";
@@ -13,6 +13,7 @@ import type { EditTool } from "./edit/EditToolbar";
 import { layoutLabels } from "@/lib/labelLayout";
 import { summarize } from "@/lib/format";
 import { layerOn, type PlanLayersConfig } from "@/lib/planLayers";
+import { distPx, fmtM } from "@/lib/units";
 import type { PlanShape, ShapeStyle } from "@/lib/shapes/types";
 
 /** 생성 페이로드 — style 생략 시 서버 기본값 적용 */
@@ -86,6 +87,15 @@ export default function DeckPlan({
   const [pathPts, setPathPts] = useState<Pt[]>([]);
   const [drag, setDrag] = useState<{ id: string; last: Pt } | null>(null);
   const [dragOff, setDragOff] = useState<ShapeOffset>(null);
+  // 측정 도구 (정규 좌표로 저장)
+  const [measure, setMeasure] = useState<{ a: Pt; b: Pt } | null>(null);
+  const [measuring, setMeasuring] = useState(false);
+
+  // 도구/뷰가 바뀌면 측정선 제거
+  useEffect(() => {
+    setMeasure(null);
+    setMeasuring(false);
+  }, [editTool, view, editMode]);
 
   const drawingTool = ["rect", "ellipse", "line", "path"].includes(editTool);
   const viewShapes = useMemo(() => shapes.filter((s) => s.view === view), [shapes, view]);
@@ -131,9 +141,15 @@ export default function DeckPlan({
   /* ---------- 포인터 핸들러 (그리기/이동) ---------- */
 
   const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (!editMode || !drawingTool) return;
+    if (!editMode) return;
     const p = toCanonical(e.clientX, e.clientY);
     if (!p) return;
+    if (editTool === "measure") {
+      setMeasure({ a: p, b: p });
+      setMeasuring(true);
+      return;
+    }
+    if (!drawingTool) return;
     if (editTool === "path") setPathPts([p]);
     else setDraft({ start: p, cur: p });
   };
@@ -142,6 +158,10 @@ export default function DeckPlan({
     if (!editMode) return;
     const p = toCanonical(e.clientX, e.clientY);
     if (!p) return;
+    if (measuring && measure) {
+      setMeasure({ ...measure, b: p });
+      return;
+    }
     if (drag) {
       setDragOff({ id: drag.id, dx: p.x - drag.last.x, dy: p.y - drag.last.y });
       return;
@@ -156,6 +176,7 @@ export default function DeckPlan({
 
   const handlePointerUp = () => {
     if (!editMode) return;
+    if (measuring) setMeasuring(false); // 측정선은 유지 (다음 드래그/도구 변경 시 제거)
     // 도형 이동 확정
     if (drag && dragOff && (dragOff.dx !== 0 || dragOff.dy !== 0)) {
       const s = shapes.find((x) => x.id === drag.id);
@@ -225,13 +246,11 @@ export default function DeckPlan({
 
   const cursor = !editMode
     ? ""
-    : drawingTool
+    : drawingTool || editTool === "device" || editTool === "measure"
       ? "cursor-crosshair"
-      : editTool === "device"
-        ? "cursor-crosshair"
-        : editTool === "erase"
-          ? "cursor-not-allowed"
-          : "";
+      : editTool === "erase"
+        ? "cursor-not-allowed"
+        : "";
 
   const layerCfg = view === "top" ? layers.top : layers.side;
 
@@ -286,6 +305,57 @@ export default function DeckPlan({
             <path d={`M${pathPts.map((p) => `${p.x},${p.y}`).join(" L")}`}
               stroke="#0ea5e9" strokeWidth={3} fill="none" strokeDasharray="6 4" pointerEvents="none" />
           )}
+        </g>
+
+        {/* ---- 치수/측정 (표시 좌표, 미러 밖 — 텍스트 정방향) ---- */}
+        <g pointerEvents="none">
+          {/* 그리기 중 실시간 치수 */}
+          {draft && (editTool === "rect" || editTool === "ellipse" || editTool === "line") && (() => {
+            const w = Math.abs(draft.cur.x - draft.start.x);
+            const h = Math.abs(draft.cur.y - draft.start.y);
+            const text =
+              editTool === "line"
+                ? fmtM(distPx(draft.start, draft.cur))
+                : editTool === "rect"
+                  ? `${fmtM(w)} × ${fmtM(h)}`
+                  : `${fmtM(w * 2)} × ${fmtM(h * 2)}`;
+            return (
+              <text x={flipX(draft.cur.x)} y={draft.cur.y - 14} textAnchor="middle" fontSize={17}
+                fontWeight={600} fill="#0284c7" stroke="#ffffff" strokeWidth={4} paintOrder="stroke">
+                {text}
+              </text>
+            );
+          })()}
+
+          {/* 측정선 */}
+          {measure && (() => {
+            const ax = flipX(measure.a.x), bx = flipX(measure.b.x);
+            const mx2 = (ax + bx) / 2, my2 = (measure.a.y + measure.b.y) / 2;
+            return (
+              <g>
+                <line x1={ax} y1={measure.a.y} x2={bx} y2={measure.b.y}
+                  stroke="#f59e0b" strokeWidth={2.5} strokeDasharray="8 5" />
+                <circle cx={ax} cy={measure.a.y} r={5} fill="#f59e0b" />
+                <circle cx={bx} cy={measure.b.y} r={5} fill="#f59e0b" />
+                <text x={mx2} y={my2 - 12} textAnchor="middle" fontSize={19} fontWeight={700}
+                  fill="#b45309" stroke="#ffffff" strokeWidth={4.5} paintOrder="stroke">
+                  {fmtM(distPx(measure.a, measure.b))}
+                </text>
+              </g>
+            );
+          })()}
+        </g>
+
+        {/* ---- 축척 바 (125px = 1m) ---- */}
+        <g pointerEvents="none" opacity={0.85}>
+          <line x1="70" y1="828" x2="320" y2="828" stroke="#64748b" strokeWidth={3} />
+          <line x1="70" y1="820" x2="70" y2="836" stroke="#64748b" strokeWidth={3} />
+          <line x1="195" y1="822" x2="195" y2="834" stroke="#64748b" strokeWidth={2} />
+          <line x1="320" y1="820" x2="320" y2="836" stroke="#64748b" strokeWidth={3} />
+          <text x="195" y="812" textAnchor="middle" fontSize={15} fill="#64748b"
+            stroke="#ffffff" strokeWidth={3.5} paintOrder="stroke">
+            2 m
+          </text>
         </g>
 
         {/* 라벨 + 리더 라인 (편집 중에는 클릭 통과) */}
@@ -353,6 +423,7 @@ export default function DeckPlan({
           {editTool === "line" && "선 — 드래그해서 그리기"}
           {editTool === "path" && "자유곡선 — 누른 채로 그리기"}
           {editTool === "erase" && "지우개 — 도형을 클릭해 삭제"}
+          {editTool === "measure" && "측정 — 드래그해서 실제 거리(m) 재기"}
         </div>
       )}
     </div>

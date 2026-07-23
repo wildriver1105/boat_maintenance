@@ -5,7 +5,8 @@ import { useState } from "react";
 import { LAYER_LABELS, layerOn, type PlanLayersConfig } from "@/lib/planLayers";
 import type { DeckView } from "@/lib/types";
 
-export type EditTool = "device" | "select" | "rect" | "ellipse" | "line" | "path" | "erase";
+export type EditTool =
+  | "device" | "select" | "rect" | "ellipse" | "line" | "path" | "erase" | "measure";
 
 const TOOLS: { key: EditTool; icon: string; label: string }[] = [
   { key: "device", icon: "📍", label: "장비 배치" },
@@ -15,6 +16,7 @@ const TOOLS: { key: EditTool; icon: string; label: string }[] = [
   { key: "line", icon: "∕", label: "선" },
   { key: "path", icon: "✏️", label: "자유곡선" },
   { key: "erase", icon: "🧹", label: "지우개" },
+  { key: "measure", icon: "📏", label: "측정" },
 ];
 
 export default function EditToolbar({
