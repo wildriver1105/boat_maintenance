@@ -1,5 +1,6 @@
 // Edge-safe 인증 설정 — 미들웨어(라우트 보호)에서 사용. bcrypt/파일IO 를 import 하지 않는다.
 import type { NextAuthConfig } from "next-auth";
+import { AUTH_DISABLED } from "@/lib/auth-mode";
 
 export const authConfig = {
   pages: { signIn: "/login" },
@@ -8,6 +9,8 @@ export const authConfig = {
   callbacks: {
     // 미들웨어 보호: 로그인 페이지 외에는 인증 필요
     authorized({ auth, request }) {
+      // LightHouse/Tauri 설치 PoC 중 임시 우회.
+      if (AUTH_DISABLED) return true;
       const isLoggedIn = !!auth?.user;
       const { pathname } = request.nextUrl;
       if (pathname.startsWith("/login")) return true;

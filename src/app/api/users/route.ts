@@ -1,14 +1,16 @@
 // 크루 계정 관리 API — 관리자 전용.
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { AUTH_DISABLED } from "@/lib/auth-mode";
 import { listUsers, createUser, deleteUser, type Role } from "@/lib/users/registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 async function requireAdmin() {
+  if (AUTH_DISABLED) return true;
   const session = await auth();
-  return session?.user?.role === "admin" ? session : null;
+  return session?.user?.role === "admin";
 }
 
 export async function GET() {

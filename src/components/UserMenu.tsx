@@ -2,12 +2,14 @@
 "use client";
 
 import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
+// import { signOut, useSession } from "next-auth/react";
+import { AUTH_TEST_USER } from "@/lib/auth-mode";
 
 export default function UserMenu() {
-  const { data: session } = useSession();
-  const user = session?.user;
-  if (!user) return null;
+  // LightHouse/Tauri 설치 PoC 중 임시 로컬 관리자.
+  // const { data: session } = useSession();
+  // const user = session?.user;
+  const user = AUTH_TEST_USER;
   const isAdmin = user.role === "admin";
 
   return (
@@ -40,12 +42,14 @@ export default function UserMenu() {
           </Link>
         </>
       )}
+      {/* Auth PoC 우회 중: 로그아웃 버튼 비활성
       <button
         onClick={() => signOut({ callbackUrl: "/login" })}
         className="rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100"
       >
         로그아웃
       </button>
+      */}
     </div>
   );
 }

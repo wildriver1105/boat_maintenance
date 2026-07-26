@@ -1,6 +1,7 @@
 // 단일 템플릿 — 수정 / 삭제 (관리자 전용). 조회는 목록(GET /api/procedures) 사용.
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { AUTH_DISABLED } from "@/lib/auth-mode";
 import { deleteTemplate, updateTemplate } from "@/lib/procedures/registry";
 import type { ProcedureTemplate } from "@/lib/procedures/types";
 
@@ -8,6 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 async function requireAdmin() {
+  if (AUTH_DISABLED) return true;
   const session = await auth();
   return session?.user?.role === "admin";
 }

@@ -1,6 +1,7 @@
 // 단일 실행 로그 — 조회 / 항목 체크·메모·완료 / 삭제(관리자)
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { AUTH_DISABLED, AUTH_TEST_USER } from "@/lib/auth-mode";
 import {
   completeRun,
   deleteRun,
@@ -22,8 +23,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const session = await auth();
-  const su = session?.user;
+  const session = AUTH_DISABLED ? null : await auth();
+  const su = AUTH_DISABLED ? AUTH_TEST_USER : session?.user;
   if (!su) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const user = { id: su.id ?? su.email ?? "unknown", name: su.name ?? su.email ?? "알 수 없음" };
   const isAdmin = su.role === "admin";
@@ -52,9 +53,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 }
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (session?.user?.role !== "admin")
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!AUTH_DISABLED) {
+    const session = await auth();
+    if (session?.user?.role !== "admin")
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
   const { id } = await ctx.params;
   const ok = await deleteRun(id);
   if (!ok) return NextResponse.json({ error: "not found" }, { status: 404 });
