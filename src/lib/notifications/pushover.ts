@@ -64,8 +64,9 @@ export class PushoverChannel implements NotificationChannel {
     if (!this.token) {
       return { ok: false, status: 0, detail: "PUSHOVER_APP_TOKEN 이 설정되지 않았습니다." };
     }
-    const keys = await enabledUserKeys();
+    // msg.to 가 있으면 그 대상에게만 (테스트 발송 등), 없으면 활성 수신자 전원.
     // 레지스트리가 비어있으면 env 의 키(들)로 폴백 — 콤마 구분 다중 키 지원
+    const keys = msg.to?.length ? msg.to : await enabledUserKeys();
     const recipients = keys.length ? keys : this.envUsers;
     if (recipients.length === 0) {
       return { ok: false, status: 0, detail: "등록된 수신자가 없습니다." };

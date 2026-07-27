@@ -13,6 +13,8 @@ export interface NotifyMessage {
   /** 알림에서 열 링크 (예: 해당 장비 도면) */
   url?: string;
   urlTitle?: string;
+  /** 받을 대상(채널별 수신자 키). 지정하면 이들에게만, 없으면 활성 수신자 전원에게 */
+  to?: string[];
 }
 
 export interface NotifyResult {

@@ -96,6 +96,15 @@ export async function enabledUserKeys(): Promise<string[]> {
   return (await listRecipients()).filter((r) => r.enabled && r.userKey).map((r) => r.userKey);
 }
 
+/**
+ * 지정한 수신자 id 들의 User Key — 테스트 발송처럼 일부에게만 보낼 때 사용.
+ * 사용자가 명시적으로 고른 대상이므로 enabled 여부는 따지지 않는다.
+ */
+export async function userKeysByIds(ids: string[]): Promise<string[]> {
+  const want = new Set(ids);
+  return (await listRecipients()).filter((r) => want.has(r.id) && r.userKey).map((r) => r.userKey);
+}
+
 /** UI 표시용 마스킹 (앞4…뒤4) */
 export function maskKey(k: string): string {
   return k.length <= 10 ? k : `${k.slice(0, 4)}…${k.slice(-4)}`;

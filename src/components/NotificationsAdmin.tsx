@@ -25,6 +25,11 @@ export default function NotificationsAdmin() {
   const [newLabel, setNewLabel] = useState("");
   const [newKey, setNewKey] = useState("");
   const [addErr, setAddErr] = useState<string | null>(null);
+  // 이름 인라인 편집
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  // 테스트 발송 대상 — null 이면 "활성 수신자 전원"(기본값)
+  const [testTargets, setTestTargets] = useState<string[] | null>(null);
 
   const load = useCallback(async () => {
     const [s, rec] = await Promise.all([
@@ -65,8 +70,30 @@ export default function NotificationsAdmin() {
 
   const removeRecipient = async (id: string) => {
     await fetch(`/api/notify/recipients?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    setTestTargets((t) => (t ? t.filter((x) => x !== id) : t));
     await load();
   };
+
+  const saveLabel = async () => {
+    const id = editingId;
+    const label = editLabel.trim();
+    setEditingId(null);
+    if (!id || !label) return;
+    await fetch("/api/notify/recipients", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, label }),
+    });
+    await load();
+  };
+
+  // 아직 손대지 않았으면 활성 수신자 전원이 기본 대상
+  const targets = testTargets ?? recipients.filter((r) => r.enabled).map((r) => r.id);
+  const toggleTarget = (id: string) =>
+    setTestTargets((t) => {
+      const base = t ?? recipients.filter((r) => r.enabled).map((r) => r.id);
+      return base.includes(id) ? base.filter((x) => x !== id) : [...base, id];
+    });
 
   const sendTest = async () => {
     setSending(true);
@@ -77,6 +104,7 @@ export default function NotificationsAdmin() {
       body: JSON.stringify({
         message: message.trim() || undefined,
         priority,
+        recipientIds: targets,
       }),
     });
     setResult(await r.json());
@@ -145,7 +173,30 @@ export default function NotificationsAdmin() {
                 className="h-4 w-4 accent-sky-600"
               />
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium text-slate-700">{r.label}</span>
+                {editingId === r.id ? (
+                  <input
+                    autoFocus
+                    value={editLabel}
+                    onChange={(e) => setEditLabel(e.target.value)}
+                    onBlur={saveLabel}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void saveLabel();
+                      if (e.key === "Escape") setEditingId(null);
+                    }}
+                    className="w-full rounded-lg border border-sky-400 px-2 py-1 text-sm text-slate-800 outline-none"
+                  />
+                ) : (
+                  <button
+                    onClick={() => {
+                      setEditingId(r.id);
+                      setEditLabel(r.label);
+                    }}
+                    title="이름 수정"
+                    className="block max-w-full truncate text-left text-sm font-medium text-slate-700 hover:text-sky-600"
+                  >
+                    {r.label} <span className="text-xs text-slate-300">✎</span>
+                  </button>
+                )}
                 <span className="block font-mono text-xs text-slate-400">{r.keyMasked}</span>
               </span>
               <button
@@ -188,7 +239,38 @@ export default function NotificationsAdmin() {
       {/* 테스트 발송 */}
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-700">테스트 발송</h2>
-        <p className="mt-0.5 text-xs text-slate-400">활성 수신자 전원에게 발송됩니다.</p>
+        <p className="mt-0.5 text-xs text-slate-400">
+          받을 사람을 선택하세요. (기본: 활성 수신자 전원)
+        </p>
+
+        {recipients.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {recipients.map((r) => {
+              const on = targets.includes(r.id);
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => toggleTarget(r.id)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium ring-1 transition-colors ${
+                    on
+                      ? "bg-sky-50 text-sky-700 ring-sky-300"
+                      : "bg-white text-slate-400 ring-slate-200 hover:text-slate-600"
+                  }`}
+                >
+                  {on ? "✓ " : ""}
+                  {r.label}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setTestTargets(targets.length === recipients.length ? [] : recipients.map((r) => r.id))}
+              className="ml-1 text-xs text-slate-400 underline hover:text-slate-600"
+            >
+              {targets.length === recipients.length ? "전체 해제" : "전체 선택"}
+            </button>
+          </div>
+        )}
+
         <input
           value={message}
           onChange={(e) => setMessage(e.target.value)}
@@ -208,10 +290,14 @@ export default function NotificationsAdmin() {
           </select>
           <button
             onClick={sendTest}
-            disabled={sending}
+            disabled={sending || targets.length === 0}
             className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-60"
           >
-            {sending ? "발송 중…" : "테스트 알림 보내기"}
+            {sending
+              ? "발송 중…"
+              : targets.length === 0
+                ? "받을 사람을 선택하세요"
+                : `테스트 알림 보내기 (${targets.length}명)`}
           </button>
         </div>
 
