@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "io.boatmaintenance.display",
   "build": {
-    "frontendDist": "http://192.168.50.10:3000",
-    "devUrl": "http://localhost:3000",
-    "beforeDevCommand": "npm run dev:lan"
+    "frontendDist": "http://192.168.1.146:3100",
+    "devUrl": "http://localhost:3100",
+    "beforeDevCommand": "npm run dev:lan -- -p 3100"
   },
   "app": {
     "windows": [
