@@ -1,6 +1,7 @@
 // 알림 상태 조회 / 테스트 발송 — 관리자 전용.
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { AUTH_DISABLED } from "@/lib/auth-mode";
 import { getChannel } from "@/lib/notifications";
 import { enabledUserKeys } from "@/lib/notifications/recipients";
 import type { NotifyPriority } from "@/lib/notifications/types";
@@ -9,8 +10,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 async function requireAdmin() {
+  if (AUTH_DISABLED) return true;
   const session = await auth();
-  return session?.user?.role === "admin" ? session : null;
+  return session?.user?.role === "admin";
 }
 
 export async function GET() {

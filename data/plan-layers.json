@@ -1,0 +1,5 @@
+{
+  "top": { "sole": true, "zones": true, "bulkheads": true, "furniture": true, "portlights": true },
+  "side": { "rigging": true, "deck": true, "interior": true, "labels": true },
+  "three": { "exterior": true, "interior": true, "water": true }
+}

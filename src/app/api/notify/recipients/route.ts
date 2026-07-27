@@ -1,6 +1,7 @@
 // 알림 수신자(User Key) 관리 — 관리자 전용. 키는 마스킹해서 반환.
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { AUTH_DISABLED } from "@/lib/auth-mode";
 import {
   addRecipient,
   deleteRecipient,
@@ -13,8 +14,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 async function requireAdmin() {
+  if (AUTH_DISABLED) return true;
   const session = await auth();
-  return session?.user?.role === "admin" ? session : null;
+  return session?.user?.role === "admin";
 }
 
 export async function GET() {

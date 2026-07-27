@@ -4,7 +4,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+// import { useSession } from "next-auth/react";
+import { AUTH_TEST_USER } from "@/lib/auth-mode";
 import type {
   CheckRecord,
   CheckStatus,
@@ -25,7 +26,9 @@ function fmt(iso: string): string {
 }
 
 export default function ProceduresView() {
-  const { data: session } = useSession();
+  // LightHouse/Tauri 설치 PoC 중 임시 로컬 관리자.
+  // const { data: session } = useSession();
+  const session = { user: AUTH_TEST_USER };
   const isAdmin = session?.user?.role === "admin";
 
   const [templates, setTemplates] = useState<ProcedureTemplate[]>([]);
