@@ -2,9 +2,13 @@
 
 import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { redirect, useRouter, useSearchParams } from "next/navigation";
+import { AUTH_DISABLED } from "@/lib/auth-mode";
 
 export default function LoginPage() {
+  // 인증 우회 모드(AUTH_DISABLED)에서는 로그인 폼이 의미가 없다.
+  // 북마크/구주소로 /login 에 들어와도 바로 도면으로 보낸다.
+  if (AUTH_DISABLED) redirect("/");
   return (
     <Suspense>
       <LoginForm />
