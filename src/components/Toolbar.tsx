@@ -20,6 +20,7 @@ type Props = {
   onToggleLabels: () => void;
   panelOpen: boolean;
   onTogglePanel: () => void;
+  onOpenElectrical: () => void;
   connected: boolean;
   source: string | null;
   deviceCount: number;
@@ -35,6 +36,7 @@ export default function Toolbar({
   onToggleLabels,
   panelOpen,
   onTogglePanel,
+  onOpenElectrical,
   connected,
   source,
   deviceCount,
@@ -79,6 +81,13 @@ export default function Toolbar({
           />
           {connected ? source ?? "" : "대기"}
         </span>
+
+        <button
+          onClick={onOpenElectrical}
+          className="rounded-xl px-3 py-2 text-sm font-medium text-amber-600 transition-colors hover:bg-amber-50"
+        >
+          ⚡ 전기
+        </button>
 
         {view !== "3d" && (
           <>

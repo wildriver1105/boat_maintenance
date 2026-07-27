@@ -18,6 +18,7 @@ const Deck3D = dynamic(() => import("./Deck3D"), {
 import StatusLegend from "./StatusLegend";
 import DeviceDetailPanel from "./DeviceDetailPanel";
 import DevicePlacementForm, { type DraftDevice } from "./DevicePlacementForm";
+import VictronPanel from "./VictronPanel";
 import {
   CATEGORY_META,
   STATUS_META,
@@ -39,6 +40,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
   const [draft, setDraft] = useState<DraftDevice | null>(null);
   const [connected, setConnected] = useState(false);
   const [source, setSource] = useState<string | null>(null);
+  const [electricalOpen, setElectricalOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/devices");
@@ -165,6 +167,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
             pending={pending}
             onSelect={handleSelect}
             onPlace={handlePlace}
+            onGroupSelect={() => setElectricalOpen(true)}
           />
         )}
       </div>
@@ -186,6 +189,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
         onToggleLabels={() => setShowLabels((v) => !v)}
         panelOpen={panelOpen}
         onTogglePanel={() => setPanelOpen((v) => !v)}
+        onOpenElectrical={() => setElectricalOpen(true)}
         connected={connected}
         source={source}
         deviceCount={devices.length}
@@ -251,6 +255,9 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
                           </span>
                           <span className="block truncate text-xs text-slate-400">
                             {summarize(d, r)}
+                            {r?.mock && (
+                              <span className="ml-1 text-[10px] text-slate-300">· 모의</span>
+                            )}
                           </span>
                         </span>
                         <span
@@ -282,6 +289,8 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
           ‹
         </button>
       )}
+
+      {electricalOpen && <VictronPanel onClose={() => setElectricalOpen(false)} />}
 
       {draft && (
         <DevicePlacementForm

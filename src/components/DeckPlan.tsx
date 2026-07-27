@@ -19,6 +19,22 @@ import {
 
 const SIDE_DEFAULT_Y = 430; // sideY 미지정 시 측면 뷰 기본 높이
 
+/** config.labelGroup — 같은 값을 가진 장비들은 도면에서 라벨 하나로 묶인다 */
+function groupOf(d: Device): string | null {
+  const g = d.config?.labelGroup;
+  return typeof g === "string" && g.length > 0 ? g : null;
+}
+
+const STATUS_ORDER = ["ok", "warning", "alert", "offline"] as const;
+function worstStatus(list: (DeviceReading | undefined)[]): keyof typeof STATUS_META {
+  let worst: (typeof STATUS_ORDER)[number] = "ok";
+  for (const r of list) {
+    const s = r?.status ?? "offline";
+    if (STATUS_ORDER.indexOf(s) > STATUS_ORDER.indexOf(worst)) worst = s;
+  }
+  return worst;
+}
+
 type Props = {
   devices: Device[];
   readings: Record<string, DeviceReading>;
@@ -29,6 +45,8 @@ type Props = {
   pending: { x: number; y: number } | null;
   onSelect: (id: string | null) => void;
   onPlace: (pos: { x: number; y: number }) => void;
+  /** 묶음 라벨 클릭 — 해당 그룹의 전용 패널(예: ⚡ 전기)을 연다 */
+  onGroupSelect?: (group: string) => void;
 };
 
 export default function DeckPlan({
@@ -41,6 +59,7 @@ export default function DeckPlan({
   pending,
   onSelect,
   onPlace,
+  onGroupSelect,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -61,16 +80,49 @@ export default function DeckPlan({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [devices, view]);
 
+  // 라벨 대상: labelGroup 이 없는 장비는 개별 라벨, 같은 labelGroup 끼리는 하나로 묶는다.
+  // (예: 후방 좌현 선실의 Victron 14대 → "빅트론 전기실" 라벨 1개)
+  const labelEntries = useMemo(() => {
+    const singles: Device[] = [];
+    const groups = new Map<string, Device[]>();
+    for (const d of devices) {
+      const g = groupOf(d);
+      if (!g) {
+        singles.push(d);
+        continue;
+      }
+      const arr = groups.get(g);
+      if (arr) arr.push(d);
+      else groups.set(g, [d]);
+    }
+    return { singles, groups: [...groups.entries()] };
+  }, [devices]);
+
+  // 묶음 라벨의 앵커 = 구성 장비 위치의 중심점 (현재 뷰 좌표 기준)
+  const groupPos = useMemo(() => {
+    const map: Record<string, { x: number; y: number }> = {};
+    for (const [name, members] of labelEntries.groups) {
+      const pts = members.map((m) => effectivePos[m.id]).filter(Boolean);
+      if (pts.length === 0) continue;
+      map[name] = {
+        x: pts.reduce((s, p) => s + p.x, 0) / pts.length,
+        y: pts.reduce((s, p) => s + p.y, 0) / pts.length,
+      };
+    }
+    return map;
+  }, [labelEntries, effectivePos]);
+
   const labels = useMemo(
     () =>
-      layoutLabels(
-        devices.map((d) => ({
+      layoutLabels([
+        ...labelEntries.singles.map((d) => ({
           id: d.id,
           ...effectivePos[d.id],
           labelOffset: view === "top" ? d.labelOffset : undefined,
         })),
-      ),
-    [devices, effectivePos, view],
+        ...Object.entries(groupPos).map(([name, p]) => ({ id: `group:${name}`, ...p })),
+      ]),
+    [labelEntries, effectivePos, groupPos, view],
   );
 
   // 화면 클릭 좌표 → SVG viewBox 좌표
@@ -114,7 +166,7 @@ export default function DeckPlan({
         {/* 라벨 + 리더 라인 (레퍼런스 스타일) */}
         {showLabels && (
           <g id="labels">
-            {devices.map((d) => {
+            {labelEntries.singles.map((d) => {
               const a = labels[d.id];
               const p = effectivePos[d.id];
               if (!a || !p) return null;
@@ -160,13 +212,87 @@ export default function DeckPlan({
                     y={a.y > 425 ? a.y + 40 : a.y + 4}
                     textAnchor="middle"
                     fontSize={15}
+                    /* 목업 값은 회색 이탤릭으로 흐리게 — 실측(Victron)과 눈으로 구분된다 */
+                    fill={r?.mock ? "#94a3b8" : STATUS_META[status].color}
+                    stroke="#ffffff"
+                    strokeWidth={3.5}
+                    paintOrder="stroke"
+                    style={{ userSelect: "none", fontStyle: r?.mock ? "italic" : "normal" }}
+                  >
+                    {summarize(d, r)}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* 묶음 라벨 — 한 곳에 모인 장비들을 하나로 표시. 클릭하면 전용 패널이 열린다 */}
+            {labelEntries.groups.map(([name, members]) => {
+              const a = labels[`group:${name}`];
+              const p = groupPos[name];
+              if (!a || !p) return null;
+              const rs = members.map((m) => (m.sensorId ? readings[m.sensorId] : undefined));
+              const status = worstStatus(rs);
+              const accent = CATEGORY_META[members[0].category].accent;
+              return (
+                <g
+                  key={`group:${name}`}
+                  className={onGroupSelect ? "cursor-pointer" : ""}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onGroupSelect?.(name);
+                  }}
+                >
+                  <line
+                    x1={p.x}
+                    y1={p.y}
+                    x2={a.x}
+                    y2={a.y}
+                    stroke={accent}
+                    strokeWidth={1.6}
+                    opacity={0.75}
+                  />
+                  <circle cx={a.x} cy={a.y} r={3.5} fill={accent} />
+                  {/* 클릭 영역 — SVG 텍스트는 글자 획 위에서만 눌리므로 투명 히트박스를 깐다 */}
+                  {(() => {
+                    const w = Math.max(240, (name.length + 10) * 13);
+                    const top = a.y > 425 ? a.y + 2 : a.y - 34;
+                    return (
+                      <rect
+                        x={a.x - w / 2}
+                        y={top}
+                        width={w}
+                        height={50}
+                        fill="transparent"
+                        pointerEvents="all"
+                      />
+                    );
+                  })()}
+                  <text
+                    x={a.x}
+                    y={a.y > 425 ? a.y + 20 : a.y - 16}
+                    textAnchor="middle"
+                    fontSize={19}
+                    fontWeight={700}
+                    fill="#1e293b"
+                    stroke="#ffffff"
+                    strokeWidth={4}
+                    paintOrder="stroke"
+                    style={{ userSelect: "none" }}
+                  >
+                    ⚡ {name} ({members.length})
+                  </text>
+                  <text
+                    x={a.x}
+                    y={a.y > 425 ? a.y + 40 : a.y + 4}
+                    textAnchor="middle"
+                    fontSize={15}
                     fill={STATUS_META[status].color}
                     stroke="#ffffff"
                     strokeWidth={3.5}
                     paintOrder="stroke"
                     style={{ userSelect: "none" }}
                   >
-                    {summarize(d, r)}
+                    {STATUS_META[status].label} · 눌러서 상세
                   </text>
                 </g>
               );

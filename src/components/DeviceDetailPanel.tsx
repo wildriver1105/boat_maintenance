@@ -8,6 +8,7 @@ import {
   type DeviceReading,
 } from "@/lib/types";
 import { detailRows } from "@/lib/format";
+import { bindingOf } from "@/lib/victron/binding";
 
 type Props = {
   device: Device;
@@ -27,6 +28,7 @@ export default function DeviceDetailPanel({
   const cat = CATEGORY_META[device.category];
   const status = device.sensorId ? reading?.status ?? "offline" : "offline";
   const rows = detailRows(device, reading);
+  const victron = bindingOf(device);
 
   return (
     <div className="flex h-full flex-col">
@@ -36,12 +38,23 @@ export default function DeviceDetailPanel({
             <span className="text-xl">{cat.icon}</span>
             <h2 className="text-base font-semibold text-slate-800">{device.name}</h2>
           </div>
-          <span
-            className="mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium"
-            style={{ background: `${cat.accent}1a`, color: cat.accent }}
-          >
-            {cat.label}
-          </span>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span
+              className="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
+              style={{ background: `${cat.accent}1a`, color: cat.accent }}
+            >
+              {cat.label}
+            </span>
+            {reading?.mock ? (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-400">
+                모의 데이터
+              </span>
+            ) : reading?.source === "victron" ? (
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                실측 · Victron
+              </span>
+            ) : null}
+          </div>
         </div>
         <button
           onClick={onClose}
@@ -78,6 +91,12 @@ export default function DeviceDetailPanel({
       <div className="mt-4 space-y-1 text-xs text-slate-400">
         <div>ID: {device.id}</div>
         <div>센서: {device.sensorId ?? "—"}</div>
+        {victron && (
+          <div>
+            Victron: {victron.path}
+            {victron.gxName && ` · ${victron.gxName}`}
+          </div>
+        )}
         <div>위치: ({device.position.x}, {device.position.y})</div>
       </div>
 

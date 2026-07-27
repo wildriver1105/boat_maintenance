@@ -16,13 +16,17 @@ export function summarize(device: Device, r?: DeviceReading): string {
     case "engine":
       return v.running ? `${v.tempC}°C · ${v.rpm}rpm` : "정지";
     case "electrical":
-      return `${v.voltage}V · ${typeof v.soc === "number" ? pct(v.soc) : "—"}`;
+      if (typeof v.voltage !== "number" && typeof v.soc !== "number") return "미수신";
+      return `${typeof v.voltage === "number" ? `${v.voltage}V` : "—"} · ${
+        typeof v.soc === "number" ? pct(v.soc) : "—"
+      }`;
     case "bilge":
       return `${v.levelMm}mm${v.pumpOn ? " · 펌프ON" : ""}`;
     case "seacock":
       return v.open ? "열림" : "닫힘";
     case "charging":
-      return v.mode === "off" ? "정지" : `${v.mode} · ${v.outputW}W`;
+      if (v.mode === undefined) return "미수신";
+      return v.mode === "off" ? "정지" : `${v.mode} · ${v.outputW ?? 0}W`;
     case "navigation":
     case "comms":
       return v.online ? `온라인 · ${v.signal}%` : "오프라인";
@@ -58,9 +62,12 @@ export function detailRows(device: Device, r?: DeviceReading): [string, string][
       }
       break;
     case "electrical":
-      rows.push(["전압", `${v.voltage} V`]);
+      if (typeof v.voltage === "number") rows.push(["전압", `${v.voltage} V`]);
       if (typeof v.soc === "number") rows.push(["충전량(SoC)", pct(v.soc)]);
-      rows.push(["전류", `${v.currentA} A`]);
+      if (typeof v.currentA === "number") rows.push(["전류", `${v.currentA} A`]);
+      // 실측(Victron) 리딩에만 있는 값
+      if (typeof v.powerW === "number") rows.push(["전력", `${v.powerW} W`]);
+      if (typeof v.tempC === "number") rows.push(["온도", `${v.tempC} °C`]);
       break;
     case "bilge":
       rows.push(["수위", `${v.levelMm} mm`]);
@@ -71,8 +78,11 @@ export function detailRows(device: Device, r?: DeviceReading): [string, string][
       rows.push(["밸브", v.open ? "열림 (OPEN)" : "닫힘 (CLOSED)"]);
       break;
     case "charging":
-      rows.push(["모드", String(v.mode)]);
-      rows.push(["출력", `${v.outputW} W`]);
+      if (v.mode !== undefined) rows.push(["모드", v.mode === "off" ? "정지" : String(v.mode)]);
+      if (typeof v.outputW === "number") rows.push(["출력", `${v.outputW} W`]);
+      // 실측(Victron) 리딩에만 있는 값
+      if (typeof v.voltage === "number") rows.push(["전압", `${v.voltage} V`]);
+      if (typeof v.currentA === "number") rows.push(["전류", `${v.currentA} A`]);
       break;
     case "navigation":
     case "comms":
