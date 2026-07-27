@@ -3,7 +3,7 @@
 // 수신자(User Key)는 recipients 레지스트리에서 여러 명 관리 → 전원에게 팬아웃.
 // (레지스트리가 비어있으면 env PUSHOVER_USER_KEY 로 폴백)
 import type { NotificationChannel, NotifyMessage, NotifyResult, NotifyPriority } from "./types";
-import { enabledUserKeys } from "./recipients";
+import { enabledUserKeys, envUserKeys } from "./recipients";
 
 const PRIORITY_MAP: Record<NotifyPriority, number> = {
   low: -1,
@@ -18,8 +18,8 @@ export class PushoverChannel implements NotificationChannel {
   private get token() {
     return process.env.PUSHOVER_APP_TOKEN;
   }
-  private get envUser() {
-    return process.env.PUSHOVER_USER_KEY;
+  private get envUsers(): string[] {
+    return envUserKeys();
   }
 
   get configured(): boolean {
@@ -65,7 +65,8 @@ export class PushoverChannel implements NotificationChannel {
       return { ok: false, status: 0, detail: "PUSHOVER_APP_TOKEN 이 설정되지 않았습니다." };
     }
     const keys = await enabledUserKeys();
-    const recipients = keys.length ? keys : this.envUser ? [this.envUser] : [];
+    // 레지스트리가 비어있으면 env 의 키(들)로 폴백 — 콤마 구분 다중 키 지원
+    const recipients = keys.length ? keys : this.envUsers;
     if (recipients.length === 0) {
       return { ok: false, status: 0, detail: "등록된 수신자가 없습니다." };
     }

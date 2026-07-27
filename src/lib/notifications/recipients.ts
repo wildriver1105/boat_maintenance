@@ -14,15 +14,28 @@ export interface Recipient {
 
 const FILE = path.join(process.cwd(), "data", "notify-recipients.json");
 
+/**
+ * env PUSHOVER_USER_KEY 를 여러 개(배열)로 받는다.
+ * 콤마/세미콜론/공백/줄바꿈 어느 것으로 구분해도 되고, 하나만 넣어도 동작한다.
+ *   PUSHOVER_USER_KEY=key1,key2,key3
+ */
+export function envUserKeys(): string[] {
+  const raw = process.env.PUSHOVER_USER_KEY ?? "";
+  return [...new Set(raw.split(/[\s,;]+/).map((k) => k.trim()).filter(Boolean))];
+}
+
 async function ensure(): Promise<void> {
   try {
     await fs.access(FILE);
   } catch {
     await fs.mkdir(path.dirname(FILE), { recursive: true });
-    const envKey = process.env.PUSHOVER_USER_KEY?.trim();
-    const seed: Recipient[] = envKey
-      ? [{ id: randomUUID(), label: "기본(관리자)", userKey: envKey, enabled: true }]
-      : [];
+    const keys = envUserKeys();
+    const seed: Recipient[] = keys.map((userKey, i) => ({
+      id: randomUUID(),
+      label: keys.length > 1 ? `기본 ${i + 1}` : "기본(관리자)",
+      userKey,
+      enabled: true,
+    }));
     await fs.writeFile(FILE, JSON.stringify(seed, null, 2) + "\n", "utf-8");
   }
 }
