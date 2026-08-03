@@ -17,6 +17,7 @@ import { CATEGORY_META, STATUS_META, type Device, type DeviceReading } from "@/l
 import { layerOn, type PlanLayersConfig } from "@/lib/planLayers";
 import type { PlanShape } from "@/lib/shapes/types";
 import { summarize } from "@/lib/format";
+import { groupReading, visibleDevices } from "@/lib/deviceGroups";
 
 /* ---------------- 선체/데크 지오메트리 (단면 로프트) ----------------
  * ★ 단일 소스: data/hull.json (2D 도면과 동일 데이터, 단위 = 미터) */
@@ -499,10 +500,10 @@ function DeviceMarkers({
 }) {
   return (
     <>
-      {devices.map((d) => {
+      {visibleDevices(devices).map((d) => {
         const [x, y, z] = toWorld(d);
-        const r = d.sensorId ? readings[d.sensorId] : undefined;
-        const status = d.sensorId ? r?.status ?? "offline" : "offline";
+        const r = groupReading(d, devices, readings);
+        const status = r?.status ?? "offline";
         const color = STATUS_META[status].color;
         const selected = selectedId === d.id;
         // 섹션 진입 시 범위 밖 장비는 흐리게 (클리핑된 선체와 시각적으로 일치)

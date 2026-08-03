@@ -15,7 +15,7 @@ type Props = {
 
 export default function DeviceMarker({ device, pos, reading, selected, onSelect }: Props) {
   const cat = CATEGORY_META[device.category];
-  const status = device.sensorId ? reading?.status ?? "offline" : "offline";
+  const status = reading?.status ?? "offline";
   const color = STATUS_META[status].color;
   const { x, y } = pos;
   const r = 17;

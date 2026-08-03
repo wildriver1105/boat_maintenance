@@ -30,6 +30,7 @@ import {
   type DeviceReading,
 } from "@/lib/types";
 import { summarize } from "@/lib/format";
+import { groupReading, visibleDevices } from "@/lib/deviceGroups";
 
 export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
   const [devices, setDevices] = useState<Device[]>([]);
@@ -191,15 +192,17 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
     });
   };
 
-  // 상태별 집계 (요약 배지)
+  // 사이드 목록도 맵과 동일하게 최상위(시스템)만 — 하위 기기는 상세 패널에서
+  const topDevices = useMemo(() => visibleDevices(devices), [devices]);
+
+  // 상태별 집계 (요약 배지) — 그룹은 집계 상태 1개로 센다
   const summary = useMemo(() => {
     const counts = { ok: 0, warning: 0, alert: 0, offline: 0 };
-    for (const d of devices) {
-      const s = d.sensorId ? readings[d.sensorId]?.status ?? "offline" : "offline";
-      counts[s]++;
+    for (const d of topDevices) {
+      counts[groupReading(d, devices, readings)?.status ?? "offline"]++;
     }
     return counts;
-  }, [devices, readings]);
+  }, [topDevices, devices, readings]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-slate-100">
@@ -327,16 +330,19 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
             {selected ? (
               <DeviceDetailPanel
                 device={selected}
-                reading={selected.sensorId ? readings[selected.sensorId] : undefined}
+                reading={groupReading(selected, devices, readings)}
+                devices={devices}
+                readings={readings}
+                onSelectDevice={handleSelect}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onClose={() => setSelectedId(null)}
               />
             ) : (
               <ul className="space-y-1">
-                {devices.map((d) => {
-                  const r = d.sensorId ? readings[d.sensorId] : undefined;
-                  const status = d.sensorId ? r?.status ?? "offline" : "offline";
+                {topDevices.map((d) => {
+                  const r = groupReading(d, devices, readings);
+                  const status = r?.status ?? "offline";
                   return (
                     <li key={d.id}>
                       <button
@@ -360,7 +366,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
                     </li>
                   );
                 })}
-                {devices.length === 0 && (
+                {topDevices.length === 0 && (
                   <p className="px-2 py-6 text-center text-sm text-slate-400">
                     부품이 없습니다. 편집 모드에서 도면을 클릭해 추가하세요.
                   </p>

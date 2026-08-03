@@ -12,7 +12,7 @@ export default function DeviceChip({
   reading?: DeviceReading;
 }) {
   if (!device) return null;
-  const status = device.sensorId ? reading?.status ?? "offline" : "offline";
+  const status = reading?.status ?? "offline";
   const color = STATUS_META[status].color;
   return (
     <span

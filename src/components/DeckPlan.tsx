@@ -11,6 +11,7 @@ import DeviceMarker from "./DeviceMarker";
 import ShapesLayer, { type ShapeOffset } from "./edit/ShapesLayer";
 import type { EditTool } from "./edit/EditToolbar";
 import { layoutLabels } from "@/lib/labelLayout";
+import { groupReading, visibleDevices } from "@/lib/deviceGroups";
 import { summarize } from "@/lib/format";
 import { layerOn, type PlanLayersConfig } from "@/lib/planLayers";
 import { distPx, fmtM } from "@/lib/units";
@@ -99,6 +100,8 @@ export default function DeckPlan({
 
   const drawingTool = ["rect", "ellipse", "line", "path"].includes(editTool);
   const viewShapes = useMemo(() => shapes.filter((s) => s.view === view), [shapes, view]);
+  // 그룹 자식은 맵에서 숨김 — 부모(시스템) 마커만 표시
+  const mapDevices = useMemo(() => visibleDevices(devices), [devices]);
 
   // 현재 뷰에서의 디바이스 표시 좌표
   const effectivePos = useMemo(() => {
@@ -116,13 +119,13 @@ export default function DeckPlan({
   const labels = useMemo(
     () =>
       layoutLabels(
-        devices.map((d) => ({
+        mapDevices.map((d) => ({
           id: d.id,
           ...effectivePos[d.id],
           labelOffset: view === "top" ? d.labelOffset : undefined,
         })),
       ),
-    [devices, effectivePos, view],
+    [mapDevices, effectivePos, view],
   );
 
   // 화면 클릭 좌표 → SVG viewBox 정규 좌표
@@ -361,13 +364,13 @@ export default function DeckPlan({
         {/* 라벨 + 리더 라인 (편집 중에는 클릭 통과) */}
         {showLabels && (
           <g id="labels" pointerEvents={editMode ? "none" : undefined}>
-            {devices.map((d) => {
+            {mapDevices.map((d) => {
               const a = labels[d.id];
               const p = effectivePos[d.id];
               if (!a || !p) return null;
               const cat = CATEGORY_META[d.category];
-              const r = d.sensorId ? readings[d.sensorId] : undefined;
-              const status = d.sensorId ? r?.status ?? "offline" : "offline";
+              const r = groupReading(d, devices, readings);
+              const status = r?.status ?? "offline";
               const selected = selectedId === d.id;
               return (
                 <g key={d.id} className="cursor-pointer"
@@ -393,12 +396,12 @@ export default function DeckPlan({
         )}
 
         <g id="devices" pointerEvents={editMode && editTool !== "device" ? "none" : undefined}>
-          {devices.map((d) => (
+          {mapDevices.map((d) => (
             <DeviceMarker
               key={d.id}
               device={d}
               pos={effectivePos[d.id]}
-              reading={d.sensorId ? readings[d.sensorId] : undefined}
+              reading={groupReading(d, devices, readings)}
               selected={selectedId === d.id}
               onSelect={onSelect}
             />

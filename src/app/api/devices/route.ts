@@ -40,6 +40,7 @@ export async function POST(req: Request) {
     sideY: body.sideY,
     labelOffset: body.labelOffset,
     sensorId: body.sensorId,
+    parentId: body.parentId,
     config: body.config,
     notes: body.notes,
   });
