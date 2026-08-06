@@ -23,6 +23,7 @@ import StatusLegend from "./StatusLegend";
 import DeviceDetailPanel from "./DeviceDetailPanel";
 import DevicePlacementForm, { type DraftDevice } from "./DevicePlacementForm";
 import VictronPanel from "./VictronPanel";
+import EnginePanel from "./EnginePanel";
 import {
   CATEGORY_META,
   STATUS_META,
@@ -50,6 +51,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [source, setSource] = useState<string | null>(null);
   const [electricalOpen, setElectricalOpen] = useState(false);
+  const [engineOpen, setEngineOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/devices");
@@ -291,6 +293,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
         panelOpen={panelOpen}
         onTogglePanel={() => setPanelOpen((v) => !v)}
         onOpenElectrical={() => setElectricalOpen(true)}
+        onOpenEngine={() => setEngineOpen(true)}
         connected={connected}
         source={source}
         deviceCount={devices.length}
@@ -395,6 +398,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
       )}
 
       {electricalOpen && <VictronPanel onClose={() => setElectricalOpen(false)} />}
+      {engineOpen && <EnginePanel onClose={() => setEngineOpen(false)} />}
 
       {draft && (
         <DevicePlacementForm

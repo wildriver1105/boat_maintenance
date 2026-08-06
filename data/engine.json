@@ -1,0 +1,105 @@
+{
+  "id": "eng-main",
+  "name": "메인 엔진",
+  "spec": {
+    "maker": "Yanmar",
+    "model": "4JH3-TE",
+    "ratedHp": 75,
+    "ratedRpm": 3800,
+    "continuousHp": 69,
+    "continuousRpm": 3700,
+    "cylinders": 4,
+    "displacementL": 1.995,
+    "boreMm": 84,
+    "strokeMm": 90,
+    "aspiration": "터보차저 · 직접분사",
+    "cooling": "청수 냉각 (열교환식)",
+    "weightKg": 219,
+    "fuelLph": 10.6,
+    "specSource": "Yanmar 4JH3-TE 기술자료 (제조사 공개 사양)"
+  },
+  "hours": null,
+  "hoursUpdated": null,
+  "maintenance": [
+    {
+      "id": "m-oil",
+      "name": "엔진 오일",
+      "spec": null,
+      "intervalHours": null,
+      "intervalMonths": null,
+      "lastHours": null,
+      "lastDate": null,
+      "notes": "매뉴얼에서 오일 등급·용량·주기 확인 후 입력"
+    },
+    {
+      "id": "m-oil-filter",
+      "name": "오일 필터",
+      "spec": null,
+      "intervalHours": null,
+      "intervalMonths": null,
+      "lastHours": null,
+      "lastDate": null,
+      "notes": null
+    },
+    {
+      "id": "m-fuel-filter",
+      "name": "연료 필터",
+      "spec": null,
+      "intervalHours": null,
+      "intervalMonths": null,
+      "lastHours": null,
+      "lastDate": null,
+      "notes": "엔진측 · 1차(세퍼레이터) 별도 관리"
+    },
+    {
+      "id": "m-impeller",
+      "name": "해수 펌프 임펠러",
+      "spec": null,
+      "intervalHours": null,
+      "intervalMonths": null,
+      "lastHours": null,
+      "lastDate": null,
+      "notes": "고장 시 과열 직결 — 예비품 상비 권장"
+    },
+    {
+      "id": "m-belt",
+      "name": "V벨트 (교류발전기·해수펌프)",
+      "spec": null,
+      "intervalHours": null,
+      "intervalMonths": null,
+      "lastHours": null,
+      "lastDate": null,
+      "notes": null
+    },
+    {
+      "id": "m-coolant",
+      "name": "냉각수 (청수측)",
+      "spec": null,
+      "intervalHours": null,
+      "intervalMonths": null,
+      "lastHours": null,
+      "lastDate": null,
+      "notes": null
+    },
+    {
+      "id": "m-anode",
+      "name": "아연 아노드 (열교환기)",
+      "spec": null,
+      "intervalHours": null,
+      "intervalMonths": null,
+      "lastHours": null,
+      "lastDate": null,
+      "notes": "소모품 — 주기적 점검"
+    },
+    {
+      "id": "m-gearbox-oil",
+      "name": "감속기(트랜스미션) 오일",
+      "spec": null,
+      "intervalHours": null,
+      "intervalMonths": null,
+      "lastHours": null,
+      "lastDate": null,
+      "notes": null
+    }
+  ]
+}
