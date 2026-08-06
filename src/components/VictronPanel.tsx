@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { VictronSnapshot } from "@/lib/victron/types";
+import { Bars, FlowRow, Meter, RadialGauge, type Severity } from "./gauges/Gauges";
 
 const POLL_MS = 2000;
 
@@ -36,6 +37,29 @@ function ttg(sec: number | null): string {
   if (d > 0) return `${d}일 ${h}시간`;
   if (h > 0) return `${h}시간 ${m}분`;
   return `${m}분`;
+}
+
+/* ---- 계기판용 심각도 판정 (마커/패널의 기존 임계값과 동일하게 맞춘다) ---- */
+
+function socSeverity(soc: number | null): Severity {
+  if (soc == null) return "unknown";
+  if (soc < 20) return "crit";
+  if (soc < 50) return "warn";
+  return "ok";
+}
+
+/** 12V 납축/리튬 공통 실사용 범위 11.6~14.6V 를 0..1 로 */
+const V_MIN = 11.6;
+const V_MAX = 14.6;
+function voltRatio(v: number | null): number | null {
+  if (v == null) return null;
+  return (v - V_MIN) / (V_MAX - V_MIN);
+}
+function voltSeverity(v: number | null): Severity {
+  if (v == null) return "unknown";
+  if (v < 11.6) return "crit";
+  if (v < 12.1) return "warn";
+  return "ok";
 }
 
 /** 전력 부호 색: 양(충전/유입)=녹색, 음(방전/유출)=주황 */
@@ -232,30 +256,75 @@ export default function VictronPanel({ onClose }: { onClose: () => void }) {
 
           {snap && sys && (
             <>
-              {/* 배터리 요약 */}
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Stat label="배터리 SoC" value={pct(sys.soc)} sub={sys.batteryState ?? undefined} color="#0ea5e9" />
-                <Stat label="전압" value={volts(sys.voltage)} sub={degc(sys.temperature)} />
-                <Stat
-                  label="배터리 전력"
-                  value={watts(sys.power)}
-                  sub={amps(sys.current)}
-                  color={powerColor(sys.power)}
+              {/* 배터리 — SoC 는 이 패널의 히어로 수치라 반원 게이지 하나로 */}
+              <div className="flex flex-col items-center gap-4 rounded-xl bg-white/70 p-4 ring-1 ring-black/5 sm:flex-row sm:items-center">
+                <RadialGauge
+                  value={sys.soc}
+                  label="배터리 SoC"
+                  severity={socSeverity(sys.soc)}
+                  sub={sys.batteryState ?? undefined}
                 />
-                <Stat label="잔여 시간" value={ttg(sys.timeToGoS)} sub="현재 부하 기준" />
+                <div className="w-full flex-1 space-y-3">
+                  <Meter
+                    label="전압 (12V 계통)"
+                    valueText={volts(sys.voltage)}
+                    ratio={voltRatio(sys.voltage)}
+                    severity={voltSeverity(sys.voltage)}
+                    marker={voltRatio(12.1)}
+                    note={
+                      sys.voltage == null
+                        ? "값 없음"
+                        : `범위 11.6–14.6V · 세로선은 주의 임계(12.1V) · 배터리 ${degc(sys.temperature)}`
+                    }
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide text-slate-400">배터리 전력</div>
+                      <div className="text-xl font-semibold" style={{ color: powerColor(sys.power) }}>
+                        {watts(sys.power)}
+                      </div>
+                      <div className="text-[11px] text-slate-400">{amps(sys.current)}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide text-slate-400">잔여 시간</div>
+                      <div className="text-xl font-semibold text-slate-800">{ttg(sys.timeToGoS)}</div>
+                      <div className="text-[11px] text-slate-400">현재 부하 기준</div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* 발전/부하 흐름 */}
-              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Stat label="솔라 발전" value={watts(sys.pvPower)} color={sys.pvPower ? "#10b981" : undefined} />
-                <Stat
-                  label="육상 전원(AC IN)"
-                  value={sys.acInputConnected ? watts(sys.acInputPower) : "미연결"}
-                  color={sys.acInputConnected ? "#10b981" : "#94a3b8"}
+              {/* 전력 흐름 — 유입(발전) vs 유출(부하) */}
+              <div className="mt-3">
+                <FlowRow
+                  items={[
+                    { id: "pv", label: "솔라 발전", watts: sys.pvPower, dir: "in" },
+                    {
+                      id: "ac-in",
+                      label: "육상 전원",
+                      watts: sys.acInputConnected ? sys.acInputPower : 0,
+                      dir: "in",
+                    },
+                    { id: "ac-load", label: "AC 부하", watts: sys.acLoadPower, dir: "out" },
+                    { id: "dc-load", label: "DC 부하", watts: sys.dcLoadPower, dir: "out" },
+                  ]}
                 />
-                <Stat label="AC 부하" value={watts(sys.acLoadPower)} color={sys.acLoadPower ? "#f97316" : undefined} />
-                <Stat label="DC 부하" value={watts(sys.dcLoadPower)} color={sys.dcLoadPower ? "#f97316" : undefined} />
               </div>
+
+              {/* 솔라 4대 상대 발전량 — 크기 비교라 단일 색상 농도만 사용 */}
+              {snap.solarChargers.length > 0 && (
+                <Section title="솔라 발전량 비교">
+                  <div className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5">
+                    <Bars
+                      items={snap.solarChargers.map((s) => ({
+                        id: String(s.instance),
+                        label: s.name,
+                        value: s.power,
+                      }))}
+                    />
+                  </div>
+                </Section>
+              )}
 
               {/* 인버터/충전기 */}
               {snap.inverter && (

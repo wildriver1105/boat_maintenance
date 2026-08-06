@@ -5,8 +5,31 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { EngineRecord, MaintenanceDue } from "@/lib/engine/types";
+import { Meter, RadialGauge, type Severity } from "./gauges/Gauges";
 
 type Payload = EngineRecord & { due: MaintenanceDue[] };
+
+/**
+ * 정비 주기 소진율 — 0(방금 정비) → 1(주기 도달). 1 초과면 초과.
+ * 시간·개월 두 기준 중 더 많이 소진된 쪽을 쓴다(먼저 도달하는 쪽이 기준이므로).
+ */
+function usedRatio(
+  m: { intervalHours?: number | null; intervalMonths?: number | null },
+  due: MaintenanceDue | undefined,
+): number | null {
+  if (!due) return null;
+  const r: number[] = [];
+  if (m.intervalHours && due.hoursLeft != null) r.push(1 - due.hoursLeft / m.intervalHours);
+  if (m.intervalMonths && due.monthsLeft != null) r.push(1 - due.monthsLeft / m.intervalMonths);
+  return r.length ? Math.max(...r) : null;
+}
+
+function dueSeverity(due: MaintenanceDue | undefined, ratio: number | null): Severity {
+  if (!due || ratio == null) return "unknown";
+  if (due.overdue) return "crit";
+  if (due.soon) return "warn";
+  return "ok";
+}
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -119,9 +142,31 @@ export default function EnginePanel({ onClose }: { onClose: () => void }) {
 
           {data && spec && (
             <>
-              {/* 운전시간 */}
-              <div className="rounded-xl bg-white/70 p-4 ring-1 ring-black/5">
-                <div className="flex flex-wrap items-end justify-between gap-3">
+              {/* 운전시간 + 정비 상태 요약 */}
+              <div className="flex flex-col items-center gap-4 rounded-xl bg-white/70 p-4 ring-1 ring-black/5 sm:flex-row">
+                <RadialGauge
+                  value={(() => {
+                    const known = data.due.filter((d) => d.hoursLeft != null || d.monthsLeft != null);
+                    // 주기가 입력된 항목 중 정상 비율. 하나도 없으면 알 수 없음.
+                    return known.length === 0 ? null : (known.filter((d) => !d.overdue).length / known.length) * 100;
+                  })()}
+                  label="정비 준수율"
+                  severity={(() => {
+                    const known = data.due.filter((d) => d.hoursLeft != null || d.monthsLeft != null);
+                    if (known.length === 0) return "unknown";
+                    if (known.some((d) => d.overdue)) return "crit";
+                    if (known.some((d) => d.soon)) return "warn";
+                    return "ok";
+                  })()}
+                  sub={(() => {
+                    const known = data.due.filter((d) => d.hoursLeft != null || d.monthsLeft != null);
+                    if (known.length === 0) return `주기 미입력 ${data.maintenance.length}건`;
+                    const over = known.filter((d) => d.overdue).length;
+                    const soon = known.filter((d) => d.soon).length;
+                    return over ? `초과 ${over}건` : soon ? `임박 ${soon}건` : `${known.length}건 정상`;
+                  })()}
+                />
+                <div className="flex w-full flex-1 flex-wrap items-end justify-between gap-3">
                   <div>
                     <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
                       운전시간
@@ -159,13 +204,8 @@ export default function EnginePanel({ onClose }: { onClose: () => void }) {
                   {data.maintenance.map((m) => {
                     const due = data.due.find((d) => d.itemId === m.id);
                     const known = due && (due.hoursLeft != null || due.monthsLeft != null);
-                    const tone = !known
-                      ? "text-slate-400"
-                      : due!.overdue
-                        ? "text-red-600"
-                        : due!.soon
-                          ? "text-amber-600"
-                          : "text-emerald-600";
+                    const ratio = usedRatio(m, due);
+                    const sev = dueSeverity(due, ratio);
                     const label = !known
                       ? "주기 미입력"
                       : due!.overdue
@@ -179,10 +219,17 @@ export default function EnginePanel({ onClose }: { onClose: () => void }) {
 
                     return (
                       <div key={m.id} className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-medium text-slate-700">{m.name}</span>
-                          <span className={`shrink-0 text-xs font-medium ${tone}`}>{label}</span>
-                        </div>
+                        <Meter
+                          label={m.name}
+                          valueText={label}
+                          ratio={ratio}
+                          severity={sev}
+                          note={
+                            ratio == null
+                              ? "주기·최근 정비를 입력하면 소진율이 표시됩니다"
+                              : `주기의 ${Math.round(Math.min(1, ratio) * 100)}% 소진`
+                          }
+                        />
 
                         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
                           <span>규격 {m.spec ?? "—"}</span>
