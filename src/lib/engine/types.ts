@@ -43,10 +43,35 @@ export interface MaintenanceItem {
   notes?: string | null;
 }
 
+/** 엔진 관련 실측을 어디서 가져올지 (Victron dbus 서비스 경로) */
+export interface EngineLinks {
+  batteryService?: string | null;
+  batteryTempService?: string | null;
+}
+
+/**
+ * 계기판 실측값. 이 배는 NMEA 2000 엔진 게이트웨이가 없어 rpm/냉각수/유압/연료는
+ * 항상 null 이다 — 센서가 붙으면 여기만 채우면 계기판이 그대로 살아난다.
+ * 엔진 배터리는 Victron SmartShunt 로 실제 측정되고 있다.
+ */
+export interface EngineLive {
+  rpm: number | null;
+  coolantC: number | null;
+  oilBar: number | null;
+  /** 연료 잔량 0..1 */
+  fuelRatio: number | null;
+  batteryV: number | null;
+  batterySoc: number | null;
+  batteryTempC: number | null;
+  /** 각 값의 출처 — UI 에서 "실측/미연결"을 구분해 보여준다 */
+  sources: Record<string, string | null>;
+}
+
 export interface EngineRecord {
   id: string;
   name: string;
   spec: EngineSpec;
+  links?: EngineLinks;
   /** 현재 운전시간(시간계 판독값) — 센서가 없어 수동 입력 */
   hours: number | null;
   hoursUpdated: string | null; // YYYY-MM-DD

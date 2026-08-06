@@ -4,10 +4,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { EngineRecord, MaintenanceDue } from "@/lib/engine/types";
-import { Meter, RadialGauge, type Severity } from "./gauges/Gauges";
+import type { EngineLive, EngineRecord, MaintenanceDue } from "@/lib/engine/types";
+import { Meter, RadialGauge, SEVERITY, type Severity } from "./gauges/Gauges";
 
-type Payload = EngineRecord & { due: MaintenanceDue[] };
+type Payload = EngineRecord & { due: MaintenanceDue[]; live: EngineLive };
 
 /**
  * 정비 주기 소진율 — 0(방금 정비) → 1(주기 도달). 1 초과면 초과.
@@ -29,6 +29,41 @@ function dueSeverity(due: MaintenanceDue | undefined, ratio: number | null): Sev
   if (due.overdue) return "crit";
   if (due.soon) return "warn";
   return "ok";
+}
+
+function Instrument({
+  label, value, ratio, severity, source, sub,
+}: {
+  label: string;
+  value: string | null;
+  ratio: number | null;
+  severity: Severity;
+  source?: string | null;
+  sub?: string;
+}) {
+  const s = SEVERITY[value == null ? "unknown" : severity];
+  return (
+    <div>
+      <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{label}</div>
+      <div
+        className="mt-0.5 text-xl font-semibold"
+        style={{ color: value == null ? "#94a3b8" : "#1e293b" }}
+      >
+        {value ?? "—"}
+      </div>
+      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full" style={{ background: s.track }}>
+        {ratio != null && (
+          <div
+            className="h-full rounded-full transition-[width] duration-500"
+            style={{ width: `${Math.max(0, Math.min(1, ratio)) * 100}%`, background: s.fill }}
+          />
+        )}
+      </div>
+      <div className={`mt-1 text-[10px] ${value == null ? s.text : "text-slate-400"}`}>
+        {value == null ? `${s.icon} 센서 미연결` : (sub ?? source ?? "")}
+      </div>
+    </div>
+  );
 }
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -108,6 +143,7 @@ export default function EnginePanel({ onClose }: { onClose: () => void }) {
   };
 
   const spec = data?.spec;
+  const live = data?.live;
 
   return (
     <div
@@ -124,7 +160,7 @@ export default function EnginePanel({ onClose }: { onClose: () => void }) {
               ⚙️ 엔진 · {spec ? `${spec.maker} ${spec.model}` : "…"}
             </h2>
             <p className="mt-0.5 text-[11px] text-slate-500">
-              사양 · 운전시간 · 정비 주기 (실시간 계측 없음 — NMEA 2000 엔진 게이트웨이 미설치)
+              계기 · 운전시간 · 정비
             </p>
           </div>
           <button
@@ -140,31 +176,25 @@ export default function EnginePanel({ onClose }: { onClose: () => void }) {
           {err && <p className="py-8 text-center text-sm text-red-500">불러오기 실패: {err}</p>}
           {!data && !err && <p className="py-10 text-center text-sm text-slate-400">불러오는 중…</p>}
 
-          {data && spec && (
+          {data && spec && live && (
             <>
-              {/* 운전시간 + 정비 상태 요약 */}
+              {/* ── 계기판 ── 타코미터 + 엔진 아워 */}
               <div className="flex flex-col items-center gap-4 rounded-xl bg-white/70 p-4 ring-1 ring-black/5 sm:flex-row">
                 <RadialGauge
-                  value={(() => {
-                    const known = data.due.filter((d) => d.hoursLeft != null || d.monthsLeft != null);
-                    // 주기가 입력된 항목 중 정상 비율. 하나도 없으면 알 수 없음.
-                    return known.length === 0 ? null : (known.filter((d) => !d.overdue).length / known.length) * 100;
-                  })()}
-                  label="정비 준수율"
-                  severity={(() => {
-                    const known = data.due.filter((d) => d.hoursLeft != null || d.monthsLeft != null);
-                    if (known.length === 0) return "unknown";
-                    if (known.some((d) => d.overdue)) return "crit";
-                    if (known.some((d) => d.soon)) return "warn";
-                    return "ok";
-                  })()}
-                  sub={(() => {
-                    const known = data.due.filter((d) => d.hoursLeft != null || d.monthsLeft != null);
-                    if (known.length === 0) return `주기 미입력 ${data.maintenance.length}건`;
-                    const over = known.filter((d) => d.overdue).length;
-                    const soon = known.filter((d) => d.soon).length;
-                    return over ? `초과 ${over}건` : soon ? `임박 ${soon}건` : `${known.length}건 정상`;
-                  })()}
+                  value={live.rpm}
+                  max={spec.ratedRpm ?? 4000}
+                  unit=""
+                  label="RPM"
+                  severity={
+                    live.rpm == null
+                      ? "unknown"
+                      : spec.ratedRpm && live.rpm > spec.ratedRpm
+                        ? "crit"
+                        : spec.continuousRpm && live.rpm > spec.continuousRpm
+                          ? "warn"
+                          : "ok"
+                  }
+                  sub={live.rpm == null ? "센서 미연결" : `연속정격 ${spec.continuousRpm} rpm`}
                 />
                 <div className="flex w-full flex-1 flex-wrap items-end justify-between gap-3">
                   <div>
@@ -197,6 +227,77 @@ export default function EnginePanel({ onClose }: { onClose: () => void }) {
                   </div>
                 </div>
               </div>
+
+              {/* ── 계기 ── 연료·냉각수·유압·배터리 */}
+              <Section title="계기">
+                <div className="grid grid-cols-2 gap-3 rounded-xl bg-white/70 p-4 ring-1 ring-black/5 sm:grid-cols-4">
+                  <Instrument
+                    label="연료"
+                    value={live.fuelRatio == null ? null : `${Math.round(live.fuelRatio * 100)}%`}
+                    ratio={live.fuelRatio}
+                    severity={
+                      live.fuelRatio == null
+                        ? "unknown"
+                        : live.fuelRatio < 0.1
+                          ? "crit"
+                          : live.fuelRatio < 0.25
+                            ? "warn"
+                            : "ok"
+                    }
+                    source={live.sources.fuelRatio}
+                  />
+                  <Instrument
+                    label="냉각수 온도"
+                    value={live.coolantC == null ? null : `${live.coolantC.toFixed(0)}°C`}
+                    ratio={live.coolantC == null ? null : live.coolantC / 110}
+                    severity={
+                      live.coolantC == null
+                        ? "unknown"
+                        : live.coolantC > 95
+                          ? "crit"
+                          : live.coolantC > 88
+                            ? "warn"
+                            : "ok"
+                    }
+                    source={live.sources.coolantC}
+                  />
+                  <Instrument
+                    label="유압"
+                    value={live.oilBar == null ? null : `${live.oilBar.toFixed(1)} bar`}
+                    ratio={live.oilBar == null ? null : live.oilBar / 6}
+                    severity={
+                      live.oilBar == null ? "unknown" : live.oilBar < 1.0 ? "crit" : "ok"
+                    }
+                    source={live.sources.oilBar}
+                  />
+                  <Instrument
+                    label="시동 배터리"
+                    value={live.batteryV == null ? null : `${live.batteryV.toFixed(2)} V`}
+                    ratio={live.batteryV == null ? null : (live.batteryV - 11.6) / 3}
+                    severity={
+                      live.batteryV == null
+                        ? "unknown"
+                        : live.batteryV < 11.8
+                          ? "crit"
+                          : live.batteryV < 12.2
+                            ? "warn"
+                            : "ok"
+                    }
+                    source={live.sources.battery}
+                    sub={
+                      live.batterySoc != null
+                        ? `SoC ${live.batterySoc.toFixed(0)}%${
+                            live.batteryTempC != null ? ` · ${live.batteryTempC.toFixed(1)}°C` : ""
+                          }`
+                        : undefined
+                    }
+                  />
+                </div>
+                <p className="mt-1 px-1 text-[11px] text-slate-400">
+                  RPM·연료·냉각수·유압은 NMEA 2000 엔진 게이트웨이가 없어 아직 값이 없습니다.
+                  센서가 연결되면 이 계기들이 그대로 살아납니다.
+                </p>
+              </Section>
 
               {/* 정비 */}
               <Section title={`정비 항목 (${data.maintenance.length})`}>

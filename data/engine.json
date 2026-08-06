@@ -101,5 +101,9 @@
       "lastDate": null,
       "notes": null
     }
-  ]
+  ],
+  "links": {
+    "batteryService": "battery/277",
+    "batteryTempService": "temperature/25"
+  }
 }
