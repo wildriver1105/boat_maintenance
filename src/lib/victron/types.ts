@@ -57,7 +57,19 @@ export const BATTERY_STATE: Record<number, string> = {
   2: "방전 중",
 };
 
-export interface VictronBattery {
+/** 모든 Victron 장비가 공유하는 식별·연결 정보 (연결 체계 화면에서 사용) */
+export interface VictronLink {
+  /** dbus 서비스 경로 — 예 "solarcharger/288" */
+  service: string;
+  /** 물리 연결 방식 — VE.Bus / VE.Can / VE.Direct / USB 등 (Mgmt/Connection) */
+  connection: string | null;
+  firmware: string | null;
+  serial: string | null;
+  /** 0 이면 정상 */
+  errorCode: number | null;
+}
+
+export interface VictronBattery extends VictronLink {
   instance: number;
   name: string;
   product: string | null;
@@ -71,7 +83,7 @@ export interface VictronBattery {
   consumedAh: number | null;
 }
 
-export interface VictronSolarCharger {
+export interface VictronSolarCharger extends VictronLink {
   instance: number;
   name: string;
   product: string | null;
@@ -81,11 +93,23 @@ export interface VictronSolarCharger {
   current: number | null; // Dc/0/Current
   voltage: number | null; // Dc/0/Voltage
   yieldTodayKwh: number | null;
+  /** 누적 수율(kWh) — Yield/System */
+  yieldSystemKwh: number | null;
+  /** MPP 추적 모드 (0 꺼짐 / 1 전압제한 / 2 MPPT 동작) */
+  mppMode: string | null;
   stateCode: number | null;
   state: string | null;
 }
 
-export interface VictronAlternator {
+/** 온도 센서 (temperature/*) */
+export interface VictronTemperature {
+  instance: number;
+  name: string;
+  connected: boolean;
+  celsius: number | null;
+}
+
+export interface VictronAlternator extends VictronLink {
   instance: number;
   name: string;
   product: string | null;
@@ -97,7 +121,7 @@ export interface VictronAlternator {
   state: string | null;
 }
 
-export interface VictronInverter {
+export interface VictronInverter extends VictronLink {
   instance: number;
   name: string;
   product: string | null;
@@ -148,4 +172,5 @@ export interface VictronSnapshot {
   solarChargers: VictronSolarCharger[];
   alternators: VictronAlternator[];
   inverter: VictronInverter | null;
+  temperatures: VictronTemperature[];
 }

@@ -79,18 +79,40 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+/** 물리 연결 방식별 색 — 연결 체계를 한눈에 구분하기 위한 것 */
+const LINK_COLOR: Record<string, string> = {
+  "VE.Bus": "bg-indigo-50 text-indigo-700 ring-indigo-200",
+  "VE.Can": "bg-sky-50 text-sky-700 ring-sky-200",
+  "VE.Direct": "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  USB: "bg-amber-50 text-amber-700 ring-amber-200",
+};
+
+function LinkBadge({ connection }: { connection: string | null }) {
+  if (!connection) return null;
+  const cls = LINK_COLOR[connection] ?? "bg-slate-100 text-slate-500 ring-slate-200";
+  return (
+    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${cls}`}>
+      {connection}
+    </span>
+  );
+}
+
 function DeviceRow({
   name,
   product,
   connected,
   metrics,
   badge,
+  connection,
+  errorCode,
 }: {
   name: string;
   product: string | null;
   connected: boolean;
   metrics: [string, string][];
   badge?: string | null;
+  connection?: string | null;
+  errorCode?: number | null;
 }) {
   return (
     <div className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5">
@@ -103,6 +125,12 @@ function DeviceRow({
           {badge && (
             <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
               {badge}
+            </span>
+          )}
+          <LinkBadge connection={connection ?? null} />
+          {errorCode != null && errorCode !== 0 && (
+            <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600 ring-1 ring-red-200">
+              오류 {errorCode}
             </span>
           )}
         </div>
@@ -235,6 +263,8 @@ export default function VictronPanel({ onClose }: { onClose: () => void }) {
                   <DeviceRow
                     name={snap.inverter.name}
                     product={snap.inverter.product}
+                    connection={snap.inverter.connection}
+                    errorCode={snap.inverter.errorCode}
                     connected
                     badge={snap.inverter.mode}
                     metrics={[
@@ -274,6 +304,8 @@ export default function VictronPanel({ onClose }: { onClose: () => void }) {
                       key={b.instance}
                       name={b.name}
                       product={b.product}
+                      connection={b.connection}
+                      errorCode={b.errorCode}
                       connected={b.connected}
                       badge={b.soc != null ? pct(b.soc) : null}
                       metrics={[
@@ -299,13 +331,16 @@ export default function VictronPanel({ onClose }: { onClose: () => void }) {
                       key={s.instance}
                       name={s.name}
                       product={s.product}
+                      connection={s.connection}
+                      errorCode={s.errorCode}
                       connected={s.connected}
                       badge={s.state}
                       metrics={[
                         ["발전", watts(s.power)],
                         ["PV 전압", volts0(s.pvVoltage)],
                         ["출력", `${volts(s.voltage)} · ${amps(s.current)}`],
-                        ["누적", s.yieldTodayKwh != null ? `${s.yieldTodayKwh} kWh` : "—"],
+                        ["누적", s.yieldSystemKwh != null ? `${s.yieldSystemKwh} kWh` : "—"],
+                        ...(s.mppMode ? ([["추적", s.mppMode]] as [string, string][]) : []),
                       ]}
                     />
                   ))}
@@ -320,6 +355,8 @@ export default function VictronPanel({ onClose }: { onClose: () => void }) {
                       key={a.instance}
                       name={a.name}
                       product={a.product}
+                      connection={a.connection}
+                      errorCode={a.errorCode}
                       connected={a.connected}
                       badge={a.state}
                       metrics={[
@@ -331,6 +368,75 @@ export default function VictronPanel({ onClose }: { onClose: () => void }) {
                   ))}
                 </Section>
               )}
+
+              {/* 온도 센서 */}
+              {snap.temperatures.length > 0 && (
+                <Section title={`온도 센서 (${snap.temperatures.length})`}>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {snap.temperatures.map((t) => (
+                      <Stat key={t.instance} label={t.name} value={degc(t.celsius)} />
+                    ))}
+                  </div>
+                </Section>
+              )}
+
+              {/* 연결 체계 — 어떤 장비가 어떤 물리 인터페이스로 GX 에 붙어 있는지 */}
+              <Section title="연결 체계">
+                <div className="overflow-x-auto rounded-xl bg-white/70 ring-1 ring-black/5">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200/70 text-left text-slate-400">
+                        <th className="px-3 py-2 font-medium">장비</th>
+                        <th className="px-3 py-2 font-medium">연결</th>
+                        <th className="px-3 py-2 font-medium">dbus 경로</th>
+                        <th className="px-3 py-2 font-medium">펌웨어</th>
+                        <th className="px-3 py-2 font-medium">상태</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        ...(snap.inverter ? [snap.inverter] : []),
+                        ...snap.batteries,
+                        ...snap.solarChargers,
+                        ...snap.alternators,
+                      ].map((d) => {
+                        const ok = "connected" in d ? d.connected : true;
+                        const err = d.errorCode != null && d.errorCode !== 0;
+                        return (
+                          <tr key={d.service} className="border-b border-slate-100 last:border-0">
+                            <td className="px-3 py-2 text-slate-700">{d.name}</td>
+                            <td className="px-3 py-2">
+                              <LinkBadge connection={d.connection} />
+                            </td>
+                            <td className="px-3 py-2 font-mono text-[11px] text-slate-400">
+                              {d.service}
+                            </td>
+                            <td className="px-3 py-2 tabular-nums text-slate-500">
+                              {d.firmware ?? "—"}
+                            </td>
+                            <td className="px-3 py-2">
+                              <span
+                                className={
+                                  err
+                                    ? "text-red-600"
+                                    : ok
+                                      ? "text-emerald-600"
+                                      : "text-slate-400"
+                                }
+                              >
+                                {err ? `오류 ${d.errorCode}` : ok ? "정상" : "미연결"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="px-1 text-[11px] text-slate-400">
+                  MQTT {snap.host}:1883 · Portal {snap.portalId ?? "—"} · Modbus TCP {snap.host}:502
+                </p>
+              </Section>
 
               <p className="mt-4 text-right text-[10px] text-slate-300">
                 {snap.updatedAt

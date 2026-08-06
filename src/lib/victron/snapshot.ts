@@ -12,6 +12,7 @@ import {
   type VictronInverter,
   type VictronSnapshot,
   type VictronSolarCharger,
+  type VictronTemperature,
 } from "./types";
 
 type Vals = Map<string, unknown>;
@@ -47,9 +48,27 @@ function get(vals: Vals, path: string): unknown {
   return vals.get(path);
 }
 
+/** 모든 장비 공통: 서비스 경로·물리 연결 방식·펌웨어·시리얼·에러코드 */
+function link(vals: Vals, path: string) {
+  return {
+    service: path,
+    connection: str(get(vals, `${path}/Mgmt/Connection`)),
+    firmware: (() => {
+      const f = get(vals, `${path}/FirmwareVersion`);
+      return f == null ? null : String(f);
+    })(),
+    serial: str(get(vals, `${path}/Serial`)),
+    errorCode: num(get(vals, `${path}/ErrorCode`)),
+  };
+}
+
+/** MPP 추적 모드 (solarcharger/MppOperationMode) */
+const MPP_MODE: Record<number, string> = { 0: "꺼짐", 1: "전압/전류 제한", 2: "MPPT 추적" };
+
 function battery(vals: Vals, inst: number): VictronBattery {
   const p = `battery/${inst}`;
   return {
+    ...link(vals, p),
     instance: inst,
     name: str(get(vals, `${p}/CustomName`)) ?? `배터리 ${inst}`,
     product: str(get(vals, `${p}/ProductName`)),
@@ -68,6 +87,7 @@ function solarCharger(vals: Vals, inst: number): VictronSolarCharger {
   const p = `solarcharger/${inst}`;
   const stateCode = num(get(vals, `${p}/State`));
   return {
+    ...link(vals, p),
     instance: inst,
     name: str(get(vals, `${p}/CustomName`)) ?? `MPPT ${inst}`,
     product: str(get(vals, `${p}/ProductName`)),
@@ -77,6 +97,11 @@ function solarCharger(vals: Vals, inst: number): VictronSolarCharger {
     current: round(num(get(vals, `${p}/Dc/0/Current`)), 1),
     voltage: round(num(get(vals, `${p}/Dc/0/Voltage`)), 2),
     yieldTodayKwh: round(num(get(vals, `${p}/Yield/User`)), 2),
+    yieldSystemKwh: round(num(get(vals, `${p}/Yield/System`)), 2),
+    mppMode: (() => {
+      const m = num(get(vals, `${p}/MppOperationMode`));
+      return m == null ? null : MPP_MODE[m] ?? `모드 ${m}`;
+    })(),
     stateCode,
     state: label(CHARGE_STATE, stateCode),
   };
@@ -86,6 +111,7 @@ function alternator(vals: Vals, inst: number): VictronAlternator {
   const p = `alternator/${inst}`;
   const stateCode = num(get(vals, `${p}/State`));
   return {
+    ...link(vals, p),
     instance: inst,
     name: str(get(vals, `${p}/CustomName`)) ?? `얼터네이터 ${inst}`,
     product: str(get(vals, `${p}/ProductName`)),
@@ -103,6 +129,7 @@ function inverter(vals: Vals, inst: number): VictronInverter {
   const stateCode = num(get(vals, `${p}/State`));
   const modeCode = num(get(vals, `${p}/Mode`));
   return {
+    ...link(vals, p),
     instance: inst,
     name: str(get(vals, `${p}/CustomName`)) ?? "인버터/충전기",
     product: str(get(vals, `${p}/ProductName`)),
@@ -128,6 +155,16 @@ function inverter(vals: Vals, inst: number): VictronInverter {
   };
 }
 
+function temperature(vals: Vals, inst: number): VictronTemperature {
+  const p = `temperature/${inst}`;
+  return {
+    instance: inst,
+    name: str(get(vals, `${p}/CustomName`)) ?? `온도 센서 ${inst}`,
+    connected: get(vals, `${p}/Connected`) === 1,
+    celsius: round(num(get(vals, `${p}/Temperature`)), 1),
+  };
+}
+
 export function buildSnapshot(): VictronSnapshot {
   const broker = getVictronBroker();
   const vals = broker.values;
@@ -136,6 +173,7 @@ export function buildSnapshot(): VictronSnapshot {
   const batteries = instancesOf(vals, "battery").map((i) => battery(vals, i));
   const solarChargers = instancesOf(vals, "solarcharger").map((i) => solarCharger(vals, i));
   const alternators = instancesOf(vals, "alternator").map((i) => alternator(vals, i));
+  const temperatures = instancesOf(vals, "temperature").map((i) => temperature(vals, i));
   const vebusInstances = instancesOf(vals, "vebus");
   const inv = vebusInstances.length > 0 ? inverter(vals, vebusInstances[0]) : null;
 
@@ -169,5 +207,6 @@ export function buildSnapshot(): VictronSnapshot {
     solarChargers,
     alternators,
     inverter: inv,
+    temperatures,
   };
 }
