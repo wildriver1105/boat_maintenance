@@ -31,6 +31,8 @@ export interface Device {
   sideY?: number;
   /** 텔레메트리 바인딩 키. 없으면 센서 미연결(offline)로 표시 */
   sensorId?: string;
+  /** 그룹(시스템)의 하위 기기 — 지정되면 맵에서 숨고 부모 상세에서 표시 */
+  parentId?: string;
   /** 라벨 위치 미세조정(옵션). 없으면 자동 배치(상/하단 여백) */
   labelOffset?: { dx: number; dy: number };
   /** 용량, 임계값 등 카테고리별 설정 */

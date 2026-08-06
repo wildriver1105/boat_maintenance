@@ -87,7 +87,7 @@
       {
         "id": "bp-4",
         "label": "배터리 충전 잔량 확인",
-        "deviceId": "dev-renogy-lifepo4",
+        "deviceId": "dev-victron-system",
         "required": true
       },
       {
@@ -218,7 +218,7 @@
       {
         "id": "dd-6",
         "label": "전기 스위치 OFF",
-        "deviceId": "dev-renogy-lifepo4",
+        "deviceId": "dev-victron-system",
         "required": true
       },
       {

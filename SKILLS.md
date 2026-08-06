@@ -19,18 +19,22 @@ Oceanis Clipper 473 유지보수 디스플레이의 모든 기능은 **모듈화
 
 ## 1. 장비 (Devices) — `data/devices.json`
 
-도면 위 관리 대상 장비. 실제 전자장비 배치도(2025.10.08) 39개가 1:1로 등록되어 있다.
+도면 위 관리 대상 장비. 실제 전자장비 배치도(2025.10.08) 기반으로 등록되어 있다.
 
 | 동작 | 요청 |
 |---|---|
 | 목록 | `GET /api/devices` |
-| 생성 | `POST /api/devices` `{name, category, position:{x,y}, sideY?, sensorId?, config?, notes?}` |
+| 생성 | `POST /api/devices` `{name, category, position:{x,y}, sideY?, sensorId?, parentId?, config?, notes?}` |
 | 수정 | `PUT /api/devices` `{id, ...patch}` |
 | 삭제 | `DELETE /api/devices?id=<id>` |
 
 - `category`: `engine|fuel|water|waste|electrical|charging|navigation|comms|safety|bilge|seacock|other`
 - `position` = 평면 좌표, `sideY` = 측면 수직 좌표(솔≈500, 빌지≈560, 데크≈300)
 - `sensorId` 는 텔레메트리 바인딩 키 (없으면 offline 표시)
+- `parentId` = 그룹(시스템) 소속. 지정하면 맵/목록에서 숨고 부모 상세 패널의 "구성 기기"에 표시된다.
+  부모의 상태는 하위 기기들의 **최악 상태로 자동 집계** (`src/lib/deviceGroups.ts`).
+  예: `dev-victron-system` (스타보드 창고) 아래에 Victron 기기 14개 + Renogy 리튬 배터리 4개(`dev-renogy-1..4`).
+  그룹 해제: `PUT /api/devices` `{id, parentId: ""}` (빈 값이면 최상위로 취급되어 맵에 다시 표시).
 
 ## 2. 텔레메트리 (실시간 상태)
 

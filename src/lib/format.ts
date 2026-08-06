@@ -5,6 +5,12 @@ const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 /** 마커/리스트에 붙일 짧은 한 줄 요약 */
 export function summarize(device: Device, r?: DeviceReading): string {
+  // 그룹(시스템) 집계 리딩
+  if (r?.sensorId?.startsWith("group:")) {
+    const n = r.values["기기"], a = r.values["경고"], w = r.values["주의"];
+    const tail = (a as number) > 0 ? ` · 경고 ${a}` : (w as number) > 0 ? ` · 주의 ${w}` : " · 정상";
+    return `기기 ${n}개${tail}`;
+  }
   if (!device.sensorId) return "센서 미연결";
   if (!r) return "대기 중…";
   const v = r.values;

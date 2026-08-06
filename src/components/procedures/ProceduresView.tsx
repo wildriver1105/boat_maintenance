@@ -3,6 +3,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { groupReading } from "@/lib/deviceGroups";
 import Link from "next/link";
 // import { useSession } from "next-auth/react";
 import { AUTH_TEST_USER } from "@/lib/auth-mode";
@@ -347,8 +348,8 @@ function RunCard({
             isAdmin={isAdmin}
             device={item.deviceId ? deviceById[item.deviceId] : undefined}
             reading={
-              item.deviceId && deviceById[item.deviceId]?.sensorId
-                ? readings[deviceById[item.deviceId].sensorId!]
+              item.deviceId && deviceById[item.deviceId]
+                ? groupReading(deviceById[item.deviceId], Object.values(deviceById), readings)
                 : undefined
             }
             onStatus={(status) => onStatus(item.id, status)}

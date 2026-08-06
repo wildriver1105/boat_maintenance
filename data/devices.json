@@ -1,21 +1,32 @@
 [
   {
+    "id": "dev-victron-system",
+    "name": "Victron 시스템",
+    "category": "electrical",
+    "position": {
+      "x": 360,
+      "y": 555
+    },
+    "sideY": 500,
+    "notes": "Victron 전력 생태계 통합(인버터/충전기·MPPT·DC-DC·모니터링·절연) — 스타보드 창고. 클릭하면 구성 기기와 상태가 표시됩니다. 하단에 리튬 하우스 배터리 4개."
+  },
+  {
     "id": "dev-victron-multiplus",
     "name": "Victron Multiplus II",
     "category": "charging",
     "position": {
-      "x": 265,
-      "y": 295
+      "x": 290,
+      "y": 505
     },
-    "sideY": 445,
+    "sideY": 505,
     "sensorId": "chg-multiplus",
     "notes": "인버터/차저 — 육상전원(AC)→DC 하우스 인산철 충전 & 인산철 DC→AC 인버터",
+    "parentId": "dev-victron-system",
     "config": {
       "victron": {
         "path": "vebus/276",
         "gxName": "MultiPlus-II 12/3000/120-50 120V"
-      },
-      "labelGroup": "빅트론 전기실"
+      }
     }
   },
   {
@@ -23,58 +34,58 @@
     "name": "Victron Orion DC Charger (1)",
     "category": "charging",
     "position": {
-      "x": 355,
-      "y": 295
+      "x": 290,
+      "y": 600
     },
-    "sideY": 445,
+    "sideY": 505,
     "sensorId": "chg-orion1",
     "config": {
       "ratedA": 50,
       "victron": {
         "path": "alternator/292",
         "gxName": "Orion XS #1"
-      },
-      "labelGroup": "빅트론 전기실"
+      }
     },
-    "notes": "12V 50A DC-DC 충전기 — 하우스(인산철)↔엔진(납축전지) 상호 충전, 엔진 배터리 스타보드 2개"
+    "notes": "12V 50A DC-DC 충전기 — 하우스(인산철)↔엔진(납축전지) 상호 충전, 엔진 배터리 스타보드 2개",
+    "parentId": "dev-victron-system"
   },
   {
     "id": "dev-orion-2",
     "name": "Victron Orion DC Charger (2)",
     "category": "charging",
     "position": {
-      "x": 445,
-      "y": 295
+      "x": 325,
+      "y": 602
     },
-    "sideY": 445,
+    "sideY": 505,
     "sensorId": "chg-orion2",
     "config": {
       "ratedA": 50,
       "victron": {
         "path": "alternator/288",
         "gxName": "Orion XS #2"
-      },
-      "labelGroup": "빅트론 전기실"
+      }
     },
-    "notes": "12V 50A DC-DC 충전기 — 엔진 배터리 포트 2개"
+    "notes": "12V 50A DC-DC 충전기 — 엔진 배터리 포트 2개",
+    "parentId": "dev-victron-system"
   },
   {
     "id": "dev-mppt-150-70",
     "name": "Victron MPPT 150/70",
     "category": "charging",
     "position": {
-      "x": 265,
-      "y": 240
+      "x": 290,
+      "y": 555
     },
-    "sideY": 410,
+    "sideY": 505,
     "sensorId": "chg-mppt150",
     "notes": "태양광 솔라 충전기 — 고정형 패널 포트, 중앙",
+    "parentId": "dev-victron-system",
     "config": {
       "victron": {
         "path": "solarcharger/288",
         "gxName": "Resonance MPPT #1 (150/70)"
-      },
-      "labelGroup": "빅트론 전기실"
+      }
     }
   },
   {
@@ -82,18 +93,18 @@
     "name": "Victron MPPT 100/50 (1)",
     "category": "charging",
     "position": {
-      "x": 355,
-      "y": 240
+      "x": 325,
+      "y": 558
     },
-    "sideY": 410,
+    "sideY": 505,
     "sensorId": "chg-mppt50a",
     "notes": "태양광 충전기 — 고정형 패널 스타보드",
+    "parentId": "dev-victron-system",
     "config": {
       "victron": {
         "path": "solarcharger/278",
         "gxName": "Resonance MPPT #2"
-      },
-      "labelGroup": "빅트론 전기실"
+      }
     }
   },
   {
@@ -101,18 +112,18 @@
     "name": "Victron MPPT 100/50 (2)",
     "category": "charging",
     "position": {
-      "x": 445,
-      "y": 240
+      "x": 360,
+      "y": 560
     },
-    "sideY": 410,
+    "sideY": 505,
     "sensorId": "chg-mppt50b",
     "notes": "태양광 충전기 — 탈부착형 패널 스타보드 3개",
+    "parentId": "dev-victron-system",
     "config": {
       "victron": {
         "path": "solarcharger/277",
         "gxName": "Resonance MPPT #3"
-      },
-      "labelGroup": "빅트론 전기실"
+      }
     }
   },
   {
@@ -120,18 +131,18 @@
     "name": "Victron MPPT 100/50 (3)",
     "category": "charging",
     "position": {
-      "x": 530,
-      "y": 240
+      "x": 395,
+      "y": 562
     },
-    "sideY": 410,
+    "sideY": 505,
     "sensorId": "chg-mppt50c",
     "notes": "태양광 충전기 — 탈부착형 패널 포트 2개",
+    "parentId": "dev-victron-system",
     "config": {
       "victron": {
         "path": "solarcharger/279",
         "gxName": "Resonance MPPT #4"
-      },
-      "labelGroup": "빅트론 전기실"
+      }
     }
   },
   {
@@ -139,18 +150,18 @@
     "name": "Victron Lynx SmartShunt",
     "category": "electrical",
     "position": {
-      "x": 265,
-      "y": 350
+      "x": 370,
+      "y": 505
     },
-    "sideY": 480,
+    "sideY": 505,
     "sensorId": "elec-lynx",
     "notes": "하우스 인산철 배터리 전류 측정·관리용 스마트 분배/모니터링 허브",
+    "parentId": "dev-victron-system",
     "config": {
       "victron": {
         "path": "battery/0",
         "gxName": "Lynx Shunt"
-      },
-      "labelGroup": "빅트론 전기실"
+      }
     }
   },
   {
@@ -158,18 +169,18 @@
     "name": "Victron SmartShunt (Port)",
     "category": "electrical",
     "position": {
-      "x": 355,
-      "y": 350
+      "x": 360,
+      "y": 604
     },
-    "sideY": 480,
+    "sideY": 505,
     "sensorId": "elec-shunt-p",
     "notes": "포트 엔진 배터리 전류·전압 감시 센서",
+    "parentId": "dev-victron-system",
     "config": {
       "victron": {
         "path": "battery/277",
         "gxName": "Engine Bat Shunt"
-      },
-      "labelGroup": "빅트론 전기실"
+      }
     }
   },
   {
@@ -177,18 +188,18 @@
     "name": "Victron SmartShunt (Stbd)",
     "category": "electrical",
     "position": {
-      "x": 445,
-      "y": 350
+      "x": 395,
+      "y": 606
     },
-    "sideY": 480,
+    "sideY": 505,
     "sensorId": "elec-shunt-s",
     "notes": "스타보드 엔진 배터리 전류·전압 감시 센서",
+    "parentId": "dev-victron-system",
     "config": {
       "victron": {
         "path": "battery/278",
         "gxName": "Thruster Bat Shunt"
-      },
-      "labelGroup": "빅트론 전기실"
+      }
     }
   },
   {
@@ -196,15 +207,13 @@
     "name": "Victron Agrofet Battery Isolator",
     "category": "electrical",
     "position": {
-      "x": 530,
-      "y": 350
+      "x": 430,
+      "y": 600
     },
-    "sideY": 480,
+    "sideY": 505,
     "sensorId": "elec-agrofet",
     "notes": "배터리 간 전류 역류 방지, 엔진 발전기로 배터리 병렬 충전",
-    "config": {
-      "labelGroup": "빅트론 전기실"
-    }
+    "parentId": "dev-victron-system"
   },
   {
     "id": "dev-promariner-charger",
@@ -217,27 +226,6 @@
     "sideY": 505,
     "sensorId": "chg-promariner",
     "notes": "육상 전원으로 엔진 배터리를 충전하는 충전기"
-  },
-  {
-    "id": "dev-renogy-lifepo4",
-    "name": "Renogy LiFePO4 배터리 (1~4)",
-    "category": "electrical",
-    "position": {
-      "x": 665,
-      "y": 492
-    },
-    "sideY": 522,
-    "sensorId": "batt-house",
-    "config": {
-      "count": 4,
-      "nominalV": 12,
-      "capacityAhEach": 300,
-      "victron": {
-        "path": "battery/0",
-        "gxName": "Lynx Shunt (하우스 뱅크 계측)"
-      }
-    },
-    "notes": "고용량 메인 하우스 배터리 (리튬인산철) 12V 300Ah ×4"
   },
   {
     "id": "dev-panasonic-leadacid",
@@ -265,30 +253,26 @@
     "name": "Victron Isolation Transformer (Port)",
     "category": "electrical",
     "position": {
-      "x": 265,
-      "y": 400
+      "x": 430,
+      "y": 505
     },
-    "sideY": 515,
+    "sideY": 505,
     "sensorId": "elec-isot-p",
     "notes": "육상전원-요트 절연, 감전·전식 방지 및 115V 변압 (좌현측)",
-    "config": {
-      "labelGroup": "빅트론 전기실"
-    }
+    "parentId": "dev-victron-system"
   },
   {
     "id": "dev-isotrans-stbd",
     "name": "Victron Isolation Transformer (Stbd)",
     "category": "electrical",
     "position": {
-      "x": 355,
-      "y": 400
+      "x": 465,
+      "y": 520
     },
-    "sideY": 515,
+    "sideY": 505,
     "sensorId": "elec-isot-s",
     "notes": "육상전원-요트 절연, 감전·전식 방지 및 115V 변압 (우현측)",
-    "config": {
-      "labelGroup": "빅트론 전기실"
-    }
+    "parentId": "dev-victron-system"
   },
   {
     "id": "dev-axiom-mfd",
@@ -559,18 +543,106 @@
     "name": "Victron Cerbo GX",
     "category": "electrical",
     "position": {
-      "x": 530,
-      "y": 295
+      "x": 330,
+      "y": 495
     },
-    "sideY": 445,
+    "sideY": 505,
     "sensorId": "elec-cerbo",
     "notes": "Victron 장비 통합 모니터링 및 데이터 네트워크 허브",
+    "parentId": "dev-victron-system",
     "config": {
       "victron": {
         "path": "system/0",
         "gxName": "시스템 집계"
-      },
-      "labelGroup": "빅트론 전기실"
+      }
     }
+  },
+  {
+    "id": "dev-renogy-1",
+    "name": "Renogy 리튬 배터리 1",
+    "category": "electrical",
+    "parentId": "dev-victron-system",
+    "position": {
+      "x": 290,
+      "y": 648
+    },
+    "sideY": 522,
+    "sensorId": "batt-house-1",
+    "config": {
+      "nominalV": 12,
+      "capacityAh": 300,
+      "chemistry": "LiFePO4",
+      "victron": {
+        "path": "battery/0",
+        "gxName": "Lynx Shunt (하우스 뱅크 공통 계측)"
+      }
+    },
+    "notes": "하우스 리튬(LiFePO4) 배터리 12V 300Ah — Victron 시스템 하단 4개 중 하나"
+  },
+  {
+    "id": "dev-renogy-2",
+    "name": "Renogy 리튬 배터리 2",
+    "category": "electrical",
+    "parentId": "dev-victron-system",
+    "position": {
+      "x": 330,
+      "y": 648
+    },
+    "sideY": 522,
+    "sensorId": "batt-house-2",
+    "config": {
+      "nominalV": 12,
+      "capacityAh": 300,
+      "chemistry": "LiFePO4",
+      "victron": {
+        "path": "battery/0",
+        "gxName": "Lynx Shunt (하우스 뱅크 공통 계측)"
+      }
+    },
+    "notes": "하우스 리튬(LiFePO4) 배터리 12V 300Ah — Victron 시스템 하단 4개 중 하나"
+  },
+  {
+    "id": "dev-renogy-3",
+    "name": "Renogy 리튬 배터리 3",
+    "category": "electrical",
+    "parentId": "dev-victron-system",
+    "position": {
+      "x": 370,
+      "y": 648
+    },
+    "sideY": 522,
+    "sensorId": "batt-house-3",
+    "config": {
+      "nominalV": 12,
+      "capacityAh": 300,
+      "chemistry": "LiFePO4",
+      "victron": {
+        "path": "battery/0",
+        "gxName": "Lynx Shunt (하우스 뱅크 공통 계측)"
+      }
+    },
+    "notes": "하우스 리튬(LiFePO4) 배터리 12V 300Ah — Victron 시스템 하단 4개 중 하나"
+  },
+  {
+    "id": "dev-renogy-4",
+    "name": "Renogy 리튬 배터리 4",
+    "category": "electrical",
+    "parentId": "dev-victron-system",
+    "position": {
+      "x": 410,
+      "y": 648
+    },
+    "sideY": 522,
+    "sensorId": "batt-house-4",
+    "config": {
+      "nominalV": 12,
+      "capacityAh": 300,
+      "chemistry": "LiFePO4",
+      "victron": {
+        "path": "battery/0",
+        "gxName": "Lynx Shunt (하우스 뱅크 공통 계측)"
+      }
+    },
+    "notes": "하우스 리튬(LiFePO4) 배터리 12V 300Ah — Victron 시스템 하단 4개 중 하나"
   }
 ]
