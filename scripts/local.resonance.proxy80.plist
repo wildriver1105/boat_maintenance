@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  포트 80 호스트 기반 리버스 프록시 (root 필요 → LaunchAgent 가 아니라 LaunchDaemon).
+
+  설치 (저장소는 /Users/Shared — TCC 비보호라 root 가 직접 읽을 수 있다):
+    sudo cp /Users/Shared/boat_maintenance/scripts/local.resonance.proxy80.plist /Library/LaunchDaemons/
+    sudo chown root:wheel /Library/LaunchDaemons/local.resonance.proxy80.plist
+    sudo launchctl bootstrap system /Library/LaunchDaemons/local.resonance.proxy80.plist
+
+  제거:
+    sudo launchctl bootout system/local.resonance.proxy80
+    sudo rm /Library/LaunchDaemons/local.resonance.proxy80.plist
+
+  주의: sail_training 의 scripts/forward80.mjs 도 포트 80 을 쓴다. 둘 중 하나만 실행할 것.
+        이 프록시가 train.local 도 함께 라우팅하므로 forward80 은 필요 없다.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>local.resonance.proxy80</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/node</string>
+    <string>/Users/Shared/boat_maintenance/scripts/proxy80.mjs</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PROXY_PORT</key>
+    <string>80</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/var/log/resonance-proxy80.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/resonance-proxy80.log</string>
+</dict>
+</plist>

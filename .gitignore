@@ -58,3 +58,11 @@ next-env.d.ts
 # imported 3D models (user content, can be large)
 /data/models/
 /data/models.json
+
+# 로컬 TLS 인증서 (개인키 포함 — 절대 커밋 금지)
+certs/
+
+# 배포된 루트 CA — 기기마다 mkcert 로 새로 만드는 것이라 저장소에 넣지 않는다.
+# (공개 인증서라 유출 위험은 없지만, 이 Mac 전용 산출물이고 사용자명이 들어간다)
+public/rootCA.crt
+public/rootCA.pem
