@@ -35,6 +35,8 @@ export function RadialGauge({
   severity = "ok",
   sub,
   size = 168,
+  ticks = 0,
+  redlineFrom = null,
 }: {
   value: number | null;
   max?: number;
@@ -43,6 +45,10 @@ export function RadialGauge({
   severity?: Severity;
   sub?: string;
   size?: number;
+  /** 눈금 개수 (0 이면 없음). 타코미터처럼 읽을 때 켠다 */
+  ticks?: number;
+  /** 레드라인 시작값 (max 와 같은 단위). 이 구간은 트랙을 붉게 깐다 */
+  redlineFrom?: number | null;
 }) {
   const s = SEVERITY[value == null ? "unknown" : severity];
   const ratio = value == null ? 0 : clamp01(value / max);
@@ -69,6 +75,40 @@ export function RadialGauge({
         aria-label={`${label} ${value ?? "알 수 없음"}${unit}`}>
         {/* 트랙 — 같은 계열의 옅은 단계 */}
         <path d={arc(1)} fill="none" stroke={s.track} strokeWidth={12} strokeLinecap="round" />
+
+        {/* 레드라인 구간 — 값이 없어도 어디부터 위험인지 보여준다 */}
+        {redlineFrom != null && redlineFrom < max && (
+          <path
+            d={(() => {
+              const f0 = clamp01(redlineFrom / max);
+              const [x0, y0] = pt(START + SWEEP * f0);
+              const [x1, y1] = pt(START + SWEEP);
+              return `M ${x0} ${y0} A ${R} ${R} 0 ${SWEEP * (1 - f0) > 180 ? 1 : 0} 1 ${x1} ${y1}`;
+            })()}
+            fill="none"
+            stroke="#fecaca"
+            strokeWidth={12}
+            strokeLinecap="round"
+          />
+        )}
+
+        {/* 눈금 */}
+        {ticks > 0 &&
+          Array.from({ length: ticks + 1 }, (_, i) => {
+            const f = i / ticks;
+            const [xa, ya] = (() => {
+              const d = ((START + SWEEP * f) * Math.PI) / 180;
+              return [C + (R - 10) * Math.cos(d), C + (R - 10) * Math.sin(d)];
+            })();
+            const [xb, yb] = (() => {
+              const d = ((START + SWEEP * f) * Math.PI) / 180;
+              return [C + (R - 16) * Math.cos(d), C + (R - 16) * Math.sin(d)];
+            })();
+            return (
+              <line key={i} x1={xa} y1={ya} x2={xb} y2={yb} stroke="#cbd5e1" strokeWidth={1.5} />
+            );
+          })}
+
         {value != null && (
           <path d={arc(ratio)} fill="none" stroke={s.fill} strokeWidth={12} strokeLinecap="round" />
         )}

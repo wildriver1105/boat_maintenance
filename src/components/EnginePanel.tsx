@@ -31,6 +31,27 @@ function dueSeverity(due: MaintenanceDue | undefined, ratio: number | null): Sev
   return "ok";
 }
 
+/**
+ * 데모용 가짜 계기값. 센서를 붙이기 전에 UI 를 눈으로 확인하려고 만든 것이며,
+ * 실측(EngineLive)과 섞이지 않도록 완전히 분리해 둔다. 화면에도 "데모" 라고 명시한다.
+ */
+function demoLive(t: number): EngineLive {
+  const wave = (period: number, phase = 0) => Math.sin((t / period) * Math.PI * 2 + phase);
+  const rpm = Math.round(1850 + 420 * wave(9));
+  return {
+    rpm,
+    coolantC: +(78 + 9 * wave(17, 1)).toFixed(1),
+    oilBar: +(3.6 + 0.5 * wave(6, 2)).toFixed(2),
+    fuelRatio: +(0.62 + 0.03 * wave(120)).toFixed(3),
+    batteryV: +(13.9 + 0.15 * wave(11)).toFixed(2),
+    batterySoc: 98,
+    batteryTempC: +(33 + 2 * wave(40)).toFixed(1),
+    sources: {
+      rpm: "데모", coolantC: "데모", oilBar: "데모", fuelRatio: "데모", battery: "데모",
+    },
+  };
+}
+
 function Instrument({
   label, value, ratio, severity, source, sub,
 }: {
@@ -90,6 +111,15 @@ export default function EnginePanel({ onClose }: { onClose: () => void }) {
   const [hoursInput, setHoursInput] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
+  const [demo, setDemo] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  // 데모 모드일 때만 값을 흔들어 계기가 움직이는 걸 보여준다
+  useEffect(() => {
+    if (!demo) return;
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [demo]);
 
   const load = useCallback(async () => {
     try {
@@ -143,7 +173,7 @@ export default function EnginePanel({ onClose }: { onClose: () => void }) {
   };
 
   const spec = data?.spec;
-  const live = data?.live;
+  const live = demo ? demoLive(tick) : data?.live;
 
   return (
     <div
@@ -163,13 +193,26 @@ export default function EnginePanel({ onClose }: { onClose: () => void }) {
               계기 · 운전시간 · 정비
             </p>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="닫기"
-            className="rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-100"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setDemo((v) => !v)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium ring-1 transition-colors ${
+                demo
+                  ? "bg-violet-50 text-violet-700 ring-violet-300"
+                  : "text-slate-500 ring-slate-200 hover:bg-slate-50"
+              }`}
+              title="센서 없이 계기 UI 를 확인하는 모드"
+            >
+              {demo ? "데모 켜짐" : "데모"}
+            </button>
+            <button
+              onClick={onClose}
+              aria-label="닫기"
+              className="rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-100"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <div className="max-h-[75vh] overflow-y-auto px-5 py-4">
@@ -194,6 +237,8 @@ export default function EnginePanel({ onClose }: { onClose: () => void }) {
                           ? "warn"
                           : "ok"
                   }
+                  ticks={8}
+                  redlineFrom={spec.continuousRpm ?? null}
                   sub={live.rpm == null ? "센서 미연결" : `연속정격 ${spec.continuousRpm} rpm`}
                 />
                 <div className="flex w-full flex-1 flex-wrap items-end justify-between gap-3">
@@ -293,9 +338,14 @@ export default function EnginePanel({ onClose }: { onClose: () => void }) {
                     }
                   />
                 </div>
-                <p className="mt-1 px-1 text-[11px] text-slate-400">
-                  RPM·연료·냉각수·유압은 NMEA 2000 엔진 게이트웨이가 없어 아직 값이 없습니다.
-                  센서가 연결되면 이 계기들이 그대로 살아납니다.
+                <p className={`mt-1 rounded-lg px-3 py-2 text-[11px] ${
+                  demo
+                    ? "bg-violet-50 text-violet-700 ring-1 ring-violet-200"
+                    : "px-1 text-slate-400"
+                }`}>
+                  {demo
+                    ? "데모 모드 — 아래 값은 실제 계측이 아니라 UI 확인용 가짜 값입니다."
+                    : "RPM·연료·냉각수·유압은 아직 센서가 연결되지 않았습니다. 센서가 붙으면 이 계기들이 그대로 살아납니다."}
                 </p>
               </Section>
 
