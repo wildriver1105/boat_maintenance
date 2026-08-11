@@ -4,9 +4,17 @@ import type { Device, DeviceReading, DeviceStatus } from "./types";
 
 const SEVERITY: Record<DeviceStatus, number> = { ok: 0, offline: 1, warning: 2, alert: 3 };
 
-/** 맵(마커/라벨)에 표시할 최상위 디바이스 */
+/**
+ * 맵(마커/라벨)에 표시할 최상위 디바이스.
+ * enabled === false 는 아직 데이터 소스가 없어 감춰둔 장비라 제외한다.
+ */
 export function visibleDevices(devices: Device[]): Device[] {
-  return devices.filter((d) => !d.parentId);
+  return devices.filter((d) => !d.parentId && d.enabled !== false);
+}
+
+/** 감춰둔(연결 대기) 장비 — 우측 패널에서 다시 켤 수 있게 노출한다 */
+export function pendingDevices(devices: Device[]): Device[] {
+  return devices.filter((d) => !d.parentId && d.enabled === false);
 }
 
 /** 특정 그룹의 하위 기기 */

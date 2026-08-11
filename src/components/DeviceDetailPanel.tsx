@@ -20,6 +20,7 @@ type Props = {
   onSelectDevice: (id: string) => void;
   onEdit: (d: Device) => void;
   onDelete: (id: string) => void;
+  onToggleEnabled: (d: Device, enabled: boolean) => void;
   onClose: () => void;
 };
 
@@ -31,6 +32,7 @@ export default function DeviceDetailPanel({
   onSelectDevice,
   onEdit,
   onDelete,
+  onToggleEnabled,
   onClose,
 }: Props) {
   const cat = CATEGORY_META[device.category];
@@ -155,6 +157,19 @@ export default function DeviceDetailPanel({
         <div>위치: ({device.position.x}, {device.position.y})</div>
       </div>
 
+      {device.enabled === false && (
+        <div className="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-500 ring-1 ring-slate-200">
+          데이터 소스가 없어 도면에서 감춰둔 장비입니다. 위치·메모는 그대로 보관 중이며,
+          센서를 연결하면 다시 표시할 수 있습니다.
+          <button
+            onClick={() => onToggleEnabled(device, true)}
+            className="mt-2 w-full rounded-lg bg-sky-600 py-1.5 text-xs font-medium text-white hover:bg-sky-700"
+          >
+            도면에 표시
+          </button>
+        </div>
+      )}
+
       <div className="mt-auto flex gap-2 pt-4">
         <button
           onClick={() => onEdit(device)}
@@ -162,6 +177,15 @@ export default function DeviceDetailPanel({
         >
           편집
         </button>
+        {device.enabled !== false && (
+          <button
+            onClick={() => onToggleEnabled(device, false)}
+            title="도면에서 감춤 (삭제 아님)"
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50"
+          >
+            감춤
+          </button>
+        )}
         <button
           onClick={() => onDelete(device.id)}
           className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"

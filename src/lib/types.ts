@@ -35,6 +35,12 @@ export interface Device {
   parentId?: string;
   /** 라벨 위치 미세조정(옵션). 없으면 자동 배치(상/하단 여백) */
   labelOffset?: { dx: number; dy: number };
+  /**
+   * 도면·목록에 표시할지 여부. 기본 true.
+   * false = 아직 데이터 소스가 연결되지 않아 감춰둔 장비. 삭제한 것이 아니라
+   * 위치·메모를 그대로 보관하고 있다가, 센서를 붙이면 다시 켜면 된다.
+   */
+  enabled?: boolean;
   /** 용량, 임계값 등 카테고리별 설정 */
   config?: Record<string, unknown>;
   notes?: string;

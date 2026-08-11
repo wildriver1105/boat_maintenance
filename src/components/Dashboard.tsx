@@ -32,7 +32,7 @@ import {
   type DeviceReading,
 } from "@/lib/types";
 import { summarize } from "@/lib/format";
-import { groupReading, visibleDevices } from "@/lib/deviceGroups";
+import { groupReading, pendingDevices, visibleDevices } from "@/lib/deviceGroups";
 
 export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
   const [devices, setDevices] = useState<Device[]>([]);
@@ -52,6 +52,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
   const [source, setSource] = useState<string | null>(null);
   const [electricalOpen, setElectricalOpen] = useState(false);
   const [engineOpen, setEngineOpen] = useState(false);
+  const [pendingOpen, setPendingOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/devices");
@@ -183,6 +184,16 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
     await refresh();
   };
 
+  // 도면 표시/감춤 — 삭제하지 않고 enabled 만 바꾼다
+  const handleToggleEnabled = async (d: Device, enabled: boolean) => {
+    await fetch("/api/devices", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...d, enabled }),
+    });
+    await refresh();
+  };
+
   const handleEdit = (d: Device) => {
     setEditMode(true);
     setDraft({
@@ -198,6 +209,8 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
 
   // 사이드 목록도 맵과 동일하게 최상위(시스템)만 — 하위 기기는 상세 패널에서
   const topDevices = useMemo(() => visibleDevices(devices), [devices]);
+  // 도면에서 감춘(데이터 소스 없는) 장비 — 삭제한 게 아니라 보관 중
+  const pendingDevs = useMemo(() => pendingDevices(devices), [devices]);
 
   // 상태별 집계 (요약 배지) — 그룹은 집계 상태 1개로 센다
   const summary = useMemo(() => {
@@ -342,6 +355,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
                 onSelectDevice={handleSelect}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onToggleEnabled={handleToggleEnabled}
                 onClose={() => setSelectedId(null)}
               />
             ) : (
@@ -376,6 +390,42 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
                   <p className="px-2 py-6 text-center text-sm text-slate-400">
                     부품이 없습니다. 편집 모드에서 도면을 클릭해 추가하세요.
                   </p>
+                )}
+
+                {/* 연결 대기 — 도면에서는 감췄지만 위치·메모는 보관 중인 장비 */}
+                {pendingDevs.length > 0 && (
+                  <li className="pt-2">
+                    <button
+                      onClick={() => setPendingOpen((v) => !v)}
+                      className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-xs text-slate-400 hover:bg-slate-100/70"
+                    >
+                      <span>연결 대기 {pendingDevs.length}</span>
+                      <span>{pendingOpen ? "▾" : "▸"}</span>
+                    </button>
+                    {pendingOpen && (
+                      <>
+                        <p className="px-2 pb-1 text-[11px] text-slate-400">
+                          데이터 소스가 없어 도면에서 감춰둔 장비입니다. 센서를 연결한 뒤 「도면에
+                          표시」를 누르세요.
+                        </p>
+                        <ul className="space-y-0.5">
+                          {pendingDevs.map((d) => (
+                            <li key={d.id}>
+                              <button
+                                onClick={() => handleSelect(d.id)}
+                                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left opacity-60 hover:bg-slate-100/70 hover:opacity-100"
+                              >
+                                <span className="text-sm">{CATEGORY_META[d.category].icon}</span>
+                                <span className="min-w-0 flex-1 truncate text-sm text-slate-600">
+                                  {d.name}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </li>
                 )}
               </ul>
             )}
