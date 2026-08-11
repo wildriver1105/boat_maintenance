@@ -3,7 +3,7 @@
 //
 // 배치 (원본 이미지 기준):
 //  - 선미 좌현: 후방 선실(더블 베드+베개) / 선미 우현: 후방 선실(수납/세일백)
-//  - 좌현 중앙: 행잉 로커(사선 해칭) + 후방 헤드(변기·세면대·샤워) + 차트 테이블
+//  - 좌현 중앙: 후방 헤드(변기·세면대·샤워, 선실이 헤드 벽까지 이어짐) + 차트 테이블
 //  - 중앙: 컴패니언웨이(부채꼴 계단) + 엔진(계단 아래)
 //  - 우현 중앙: 갤리(짐벌 스토브 그리드 + 더블 싱크 + 하부 로커)
 //  - 살롱: U자 세틀리(좌현) + 접이식 테이블 + 세틀리(우현), 마스트
@@ -24,7 +24,7 @@ type Props = {
 };
 
 const ZONES: { id: string; label: string; d: string }[] = [
-  { id: "zone-aft-cabin-port", label: "후방 선실 (좌현)", d: "M556,157 L500,161 L450,164 L400,170 L350,180 L300,194 L260,209 L230,226 L212,238 L196,253 L175,283 L160,313 L152,327 L152,422 L556,422 Z" },
+  { id: "zone-aft-cabin-port", label: "후방 선실 (좌현)", d: "M646,156 L646,306 L556,306 L556,422 L152,422 L152,327 L160,313 L175,283 L196,253 L212,238 L230,226 L260,209 L300,194 L350,180 L400,170 L450,164 L500,161 L556,157 Z" },
   { id: "zone-aft-cabin-stbd", label: "후방 선실 (우현)", d: "M556,428 L152,428 L152,523 L160,537 L175,567 L196,597 L212,612 L230,624 L260,641 L300,656 L350,670 L400,680 L450,686 L500,689 L556,693 Z" },
   { id: "zone-aft-head", label: "후방 헤드 (좌현)", d: "M650,156 L808,156 L808,308 L650,308 Z" },
   { id: "zone-chart", label: "차트 테이블 (좌현)", d: "M814,156 L903,156 L903,308 L814,308 Z" },
@@ -36,13 +36,6 @@ const ZONES: { id: string; label: string; d: string }[] = [
   { id: "zone-owner-cabin", label: "오너 선실 (전방)", d: "M1232,179 L1300,186 L1400,202 L1500,223 L1600,252 L1700,290 L1750,312 L1786,332 L1786,518 L1750,538 L1700,560 L1600,598 L1500,627 L1400,648 L1300,664 L1232,671 Z" },
   { id: "zone-bow", label: "뱃머리 로커", d: "M1798,339 L1850,370 L1880,389 L1900,404 L1920,419 L1928,425 L1920,431 L1900,446 L1880,461 L1850,480 L1798,511 Z" },
 ];
-
-// 사선 해칭(행잉 로커 "WWW" 표시)용 지그재그 한 줄
-function Zigzag({ x, y, n = 5, w = 11, h = 13 }: { x: number; y: number; n?: number; w?: number; h?: number }) {
-  let d = `M${x},${y}`;
-  for (let i = 0; i < n; i++) d += ` l${w},${h} l${w},${-h}`;
-  return <path d={d} fill="none" stroke="#94a3b8" strokeWidth={1.5} />;
-}
 
 export default function DeckPlanSvg({ activeZone, onZoneClick, layers }: Props) {
   const on = (k: string) => layers?.[k] !== false;
@@ -102,11 +95,11 @@ export default function DeckPlanSvg({ activeZone, onZoneClick, layers }: Props) 
       {/* ---------- 격벽 + 문(스윙 아크) ---------- */}
       {on("bulkheads") && (
       <g id="bulkheads" stroke="#475569" strokeWidth={3} strokeLinecap="round" fill="none">
-        {/* 후방 선실 전방 격벽 (x=560), 문 2개 */}
-        <line x1="560" y1="152" x2="560" y2="348" />
+        {/* 후방 선실 전방 격벽 — 상부(y<310)는 선실이 x=650 헤드 벽까지 이어짐 */}
+        <line x1="560" y1="310" x2="560" y2="348" />
         <line x1="560" y1="404" x2="560" y2="446" />
         <line x1="560" y1="502" x2="560" y2="698" />
-        {/* 후방 헤드 벽 — 좌측 벽(x=650)이 변기 바로 옆. 560~650 은 행잉 로커 구획 */}
+        {/* 후방 헤드 벽 — 좌측 벽(x=650)이 변기 바로 옆이자 후방 선실과의 격벽 */}
         <line x1="650" y1="152" x2="650" y2="310" />
         <line x1="810" y1="152" x2="810" y2="310" />
         <line x1="560" y1="310" x2="726" y2="310" />
@@ -160,12 +153,8 @@ export default function DeckPlanSvg({ activeZone, onZoneClick, layers }: Props) 
           <rect x="260" y="596" width="170" height="40" rx="8" fill="#eef2f7" stroke="#b8c2cf" />
         </g>
 
-        {/* ===== 후방 좌현: 행잉 로커(560~650) + 헤드(650~810) + 차트 테이블(814~903) ===== */}
+        {/* ===== 후방 좌현: 헤드(650~810) + 차트 테이블(814~903) — 650 이전은 후방 선실 ===== */}
         <g>
-          {/* 행잉 로커 (WWW) — 헤드 밖, 별도 구획 */}
-          <rect x="570" y="158" width="66" height="140" fill="#eef2f7" stroke="#b8c2cf" />
-          <Zigzag x={573} y={182} n={5} w={5.5} h={12} />
-          <Zigzag x={573} y={250} n={5} w={5.5} h={12} />
           {/* 변기 — 좌측 벽 바로 옆 (왼쪽 여유 공간 없음) */}
           <rect x="662" y="156" width="38" height="15" rx="4" fill="#ffffff" />
           <ellipse cx="681" cy="196" rx="17" ry="22" fill="#ffffff" />
@@ -265,13 +254,6 @@ export default function DeckPlanSvg({ activeZone, onZoneClick, layers }: Props) 
           <rect x="1268" y="582" width="54" height="58" rx="8" fill="#eef2f7" stroke="#b8c2cf" transform="rotate(4 1295 611)" />
           <circle cx="1294" cy="608" r="13" fill="#ffffff" />
           <circle cx="1294" cy="608" r="6" stroke="#cbd5e1" />
-        </g>
-
-        {/* ===== 전방 행잉 로커 (좌현, WWW) ===== */}
-        <g>
-          <rect x="1206" y="184" width="60" height="110" fill="#eef2f7" stroke="#b8c2cf" />
-          <Zigzag x={1210} y={206} n={5} w={5.5} h={13} />
-          <Zigzag x={1210} y={248} n={5} w={5.5} h={13} />
         </g>
 
         {/* ===== 오너 선실: 아일랜드 베드 + 베개 + 벤치 + 화장대 ===== */}
