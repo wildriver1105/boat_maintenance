@@ -17,9 +17,14 @@ export function pendingDevices(devices: Device[]): Device[] {
   return devices.filter((d) => !d.parentId && d.enabled === false);
 }
 
-/** 특정 그룹의 하위 기기 */
+/** 특정 그룹의 하위 기기 (감춘 것 포함 — 상세 패널에서는 전부 보여준다) */
 export function childrenOf(devices: Device[], id: string): Device[] {
   return devices.filter((d) => d.parentId === id);
+}
+
+/** 상태 집계 대상 하위 기기 — 감춰둔(모니터링하지 않는) 기기는 제외 */
+function monitoredChildren(devices: Device[], id: string): Device[] {
+  return childrenOf(devices, id).filter((d) => d.enabled !== false);
 }
 
 /**
@@ -31,7 +36,9 @@ export function groupReading(
   devices: Device[],
   readings: Record<string, DeviceReading>,
 ): DeviceReading | undefined {
-  const kids = childrenOf(devices, device.id);
+  // 감춰둔 기기(통신 기능이 없는 수동 장비 등)는 그룹 건강도에 반영하지 않는다.
+  // 그러지 않으면 절연 트랜스 같은 부품 하나 때문에 시스템 전체가 미연결로 보인다.
+  const kids = monitoredChildren(devices, device.id);
   if (kids.length === 0) {
     return device.sensorId ? readings[device.sensorId] : undefined;
   }

@@ -213,7 +213,8 @@
     "sideY": 505,
     "sensorId": "elec-agrofet",
     "notes": "배터리 간 전류 역류 방지, 엔진 발전기로 배터리 병렬 충전",
-    "parentId": "dev-victron-system"
+    "parentId": "dev-victron-system",
+    "enabled": false
   },
   {
     "id": "dev-promariner-charger",
@@ -260,7 +261,8 @@
     "sideY": 505,
     "sensorId": "elec-isot-p",
     "notes": "육상전원-요트 절연, 감전·전식 방지 및 115V 변압 (좌현측)",
-    "parentId": "dev-victron-system"
+    "parentId": "dev-victron-system",
+    "enabled": false
   },
   {
     "id": "dev-isotrans-stbd",
@@ -273,7 +275,8 @@
     "sideY": 505,
     "sensorId": "elec-isot-s",
     "notes": "육상전원-요트 절연, 감전·전식 방지 및 115V 변압 (우현측)",
-    "parentId": "dev-victron-system"
+    "parentId": "dev-victron-system",
+    "enabled": false
   },
   {
     "id": "dev-axiom-mfd",
