@@ -66,11 +66,7 @@ export default function DeviceDetailPanel({
             >
               {cat.label}
             </span>
-            {reading?.mock ? (
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-400">
-                모의 데이터
-              </span>
-            ) : reading?.source === "victron" ? (
+            {reading?.source === "victron" ? (
               <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
                 실측 · Victron
               </span>

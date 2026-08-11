@@ -362,9 +362,6 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
                           </span>
                           <span className="block truncate text-xs text-slate-400">
                             {summarize(d, r)}
-                            {r?.mock && (
-                              <span className="ml-1 text-[10px] text-slate-300">· 모의</span>
-                            )}
                           </span>
                         </span>
                         <span

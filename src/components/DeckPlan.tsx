@@ -389,12 +389,11 @@ export default function DeckPlan({
                     y={a.y > 425 ? a.y + 40 : a.y + 4}
                     textAnchor="middle"
                     fontSize={15}
-                    /* 목업 값은 회색 이탤릭으로 흐리게 — 실측(Victron)과 눈으로 구분된다 */
-                    fill={r?.mock ? "#94a3b8" : STATUS_META[status].color}
+                    fill={STATUS_META[status].color}
                     stroke="#ffffff"
                     strokeWidth={3.5}
                     paintOrder="stroke"
-                    style={{ userSelect: "none", fontStyle: r?.mock ? "italic" : "normal" }}
+                    style={{ userSelect: "none" }}
                   >
                     {summarize(d, r)}
                   </text>

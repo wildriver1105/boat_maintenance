@@ -12,7 +12,9 @@ export function summarize(device: Device, r?: DeviceReading): string {
     return `기기 ${n}개${tail}`;
   }
   if (!device.sensorId) return "센서 미연결";
-  if (!r) return "대기 중…";
+  // sensorId 는 있지만 이를 만들어내는 소스가 없는 경우.
+  // "대기 중"은 곧 값이 올 것처럼 읽히므로, 연결이 없다는 사실을 그대로 적는다.
+  if (!r) return "미연결";
   const v = r.values;
   switch (device.category) {
     case "fuel":

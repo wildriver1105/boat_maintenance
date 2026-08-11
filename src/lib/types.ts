@@ -47,10 +47,8 @@ export interface DeviceReading {
   /** 예: { level: 0.8 } (탱크), { open: true } (시콕크), { tempC: 88 } (엔진) */
   values: Record<string, number | string | boolean>;
   ts: number;
-  /** 이 리딩을 만든 소스. 실측 장비는 "victron", 미연결 목업은 "mock" */
+  /** 이 리딩을 만든 소스 (예: "victron") */
   source?: string;
-  /** true 면 실제 계측값이 아닌 목업 — UI 에서 "모의" 배지로 구분한다 */
-  mock?: boolean;
 }
 
 /** 카테고리 표시 메타 (라벨/색/아이콘) — UI 전역에서 재사용 */

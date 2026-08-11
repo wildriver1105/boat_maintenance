@@ -1,51 +1,25 @@
 // 활성 센서 소스 선택 지점.
 //
-// 기본은 Composite: config.victron 바인딩이 있는 장비는 Venus OS 실측값을 쓰고,
-// 아직 실통신이 없는 나머지 장비만 목업으로 채운다(리딩에 mock=true 표시).
-// SENSOR_SOURCE=mock 이면 전부 목업, =victron 이면 실측 장비만 표시된다.
-import type { Device, DeviceReading } from "@/lib/types";
+// 지금 이 배에서 실제로 계측되는 것은 Victron(Venus OS MQTT) 뿐이다.
+// 그 외 장비는 센서가 물리적으로 연결되어 있지 않으므로 리딩을 만들지 않는다 —
+// 값이 없으면 UI 가 "미연결"로 표시한다.
+//
+// 가짜 값으로 채우지 않는 이유: 배에서 계기가 그럴듯한 숫자를 보여주면
+// 연결이 끊긴 것인지 정상인지 구분할 수 없고, 그 판단 착오는 위험하다.
+//
+// 이후 CAN/NMEA2000/ESP32 소스를 추가할 때는 여기에 케이스를 늘리고
+// CompositeSensorSource 처럼 합치면 된다.
 import type { SensorSource } from "./types";
-import { MockSensorSource } from "./mock";
 import { VictronSensorSource } from "./victron";
-import { bindingOf } from "@/lib/victron/binding";
-
-/** 실측(Victron) + 목업(나머지) 합성 소스 */
-class CompositeSensorSource implements SensorSource {
-  readonly name = "victron+mock";
-  private victron = new VictronSensorSource();
-  private mock = new MockSensorSource();
-
-  async getReadings(devices: Device[]): Promise<DeviceReading[]> {
-    const bound = devices.filter((d) => !!bindingOf(d));
-    const unbound = devices.filter((d) => !bindingOf(d));
-
-    const [real, fake] = await Promise.all([
-      this.victron.getReadings(bound),
-      this.mock.getReadings(unbound),
-    ]);
-
-    return [
-      ...real,
-      // 목업 리딩은 실측과 구분되도록 표시 — UI 에서 "모의" 배지로 렌더링된다
-      ...fake.map((r) => ({ ...r, source: "mock", mock: true })),
-    ];
-  }
-}
 
 let cached: SensorSource | null = null;
 
 export function getSensorSource(): SensorSource {
   if (cached) return cached;
   switch (process.env.SENSOR_SOURCE) {
-    case "mock":
-      cached = new MockSensorSource();
-      break;
-    case "victron":
-      cached = new VictronSensorSource();
-      break;
     // case "can": cached = new CanSensorSource(); break;
     default:
-      cached = new CompositeSensorSource();
+      cached = new VictronSensorSource();
   }
   return cached;
 }
