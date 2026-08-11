@@ -24,16 +24,16 @@ type Props = {
 };
 
 const ZONES: { id: string; label: string; d: string }[] = [
-  { id: "zone-aft-cabin-port", label: "후방 선실 (좌현)", d: "M162,308 C182,214 300,164 520,154 L556,154 L556,422 L146,422 Z" },
-  { id: "zone-aft-cabin-stbd", label: "후방 선실 (우현)", d: "M146,428 L556,428 L556,696 L520,696 C300,686 182,636 162,542 C150,504 144,466 146,428 Z" },
-  { id: "zone-aft-head", label: "후방 헤드 (좌현)", d: "M560,150 L808,150 L808,308 L560,308 Z" },
+  { id: "zone-aft-cabin-port", label: "후방 선실 (좌현)", d: "M556,157 L500,161 L450,164 L400,170 L350,180 L300,194 L260,209 L230,226 L212,238 L196,253 L175,283 L160,313 L152,327 L152,422 L556,422 Z" },
+  { id: "zone-aft-cabin-stbd", label: "후방 선실 (우현)", d: "M556,428 L152,428 L152,523 L160,537 L175,567 L196,597 L212,612 L230,624 L260,641 L300,656 L350,670 L400,680 L450,686 L500,689 L556,693 Z" },
+  { id: "zone-aft-head", label: "후방 헤드 (좌현)", d: "M560,156 L808,156 L808,308 L560,308 Z" },
   { id: "zone-companionway", label: "컴패니언웨이/엔진", d: "M560,312 L903,312 L903,468 L560,468 Z" },
-  { id: "zone-galley", label: "갤리 (우현)", d: "M560,472 L903,472 L903,698 L560,698 Z" },
-  { id: "zone-saloon", label: "살롱", d: "M907,150 L1228,150 L1228,698 L907,698 Z" },
+  { id: "zone-galley", label: "갤리 (우현)", d: "M560,472 L903,472 L903,694 L560,694 Z" },
+  { id: "zone-saloon", label: "살롱", d: "M907,156 L1014,161 L1100,166 L1200,175 L1228,178 L1228,672 L1200,675 L1100,684 L1014,689 L907,694 Z" },
   { id: "zone-nav", label: "항해석 (우현)", d: "M1240,452 L1428,476 L1410,558 L1236,534 Z" },
   { id: "zone-fwd-head", label: "전방 헤드 (우현)", d: "M1186,544 L1330,556 L1322,664 L1194,652 Z" },
-  { id: "zone-owner-cabin", label: "오너 선실 (전방)", d: "M1232,152 C1420,168 1640,240 1790,425 C1640,610 1420,682 1232,698 Z" },
-  { id: "zone-bow", label: "뱃머리 로커", d: "M1794,330 C1850,362 1902,394 1930,425 C1902,456 1850,488 1794,520 Z" },
+  { id: "zone-owner-cabin", label: "오너 선실 (전방)", d: "M1232,179 L1300,186 L1400,202 L1500,223 L1600,252 L1700,290 L1750,312 L1786,332 L1786,518 L1750,538 L1700,560 L1600,598 L1500,627 L1400,648 L1300,664 L1232,671 Z" },
+  { id: "zone-bow", label: "뱃머리 로커", d: "M1798,339 L1850,370 L1880,389 L1900,404 L1920,419 L1928,425 L1920,431 L1900,446 L1880,461 L1850,480 L1798,511 Z" },
 ];
 
 // 사선 해칭(행잉 로커 "WWW" 표시)용 지그재그 한 줄
@@ -67,7 +67,7 @@ export default function DeckPlanSvg({ activeZone, onZoneClick, layers }: Props) 
         <rect x="566" y="316" width="336" height="148" fill="url(#sole)" />
         <rect x="912" y="352" width="300" height="168" fill="url(#sole)" />
         <rect x="1238" y="298" width="60" height="256" fill="url(#sole)" />
-        <rect x="212" y="480" width="318" height="176" fill="url(#sole)" />
+        <rect x="250" y="480" width="280" height="150" fill="url(#sole)" />
       </g>
 
       )}
@@ -106,16 +106,16 @@ export default function DeckPlanSvg({ activeZone, onZoneClick, layers }: Props) 
         <line x1="560" y1="404" x2="560" y2="446" />
         <line x1="560" y1="502" x2="560" y2="698" />
         {/* 후방 헤드 벽 */}
-        <line x1="810" y1="148" x2="810" y2="310" />
+        <line x1="810" y1="152" x2="810" y2="310" />
         <line x1="560" y1="310" x2="726" y2="310" />
         <line x1="786" y1="310" x2="810" y2="310" />
         {/* 살롱/오너 격벽 (x=1230), 오너 선실 문 */}
-        <line x1="1230" y1="152" x2="1230" y2="388" />
+        <line x1="1230" y1="176" x2="1230" y2="388" />
         <line x1="1230" y1="452" x2="1230" y2="545" />
         {/* 전방 헤드 벽 */}
         <path d="M1188,545 L1240,550 M1284,554 L1330,558 M1330,558 L1322,660" />
         {/* 뱃머리 수밀 격벽 */}
-        <path d="M1794,322 Q1814,425 1794,528" strokeWidth={2.5} />
+        <path d="M1794,336 Q1814,425 1794,514" strokeWidth={2.5} />
         {/* 문 스윙 아크 */}
         <g stroke="#94a3b8" strokeWidth={1.5}>
           <path d="M560,348 A56,56 0 0 1 504,404" />
@@ -133,16 +133,17 @@ export default function DeckPlanSvg({ activeZone, onZoneClick, layers }: Props) 
       <g id="furniture" fill="none" stroke="#94a3b8" strokeWidth={2} pointerEvents="none">
         {/* ===== 후방 선실 (좌현): 더블 베드 + 베개 ===== */}
         <g>
-          <rect x="196" y="196" width="336" height="150" rx="14" fill="#ffffff" />
+          {/* 선미 쪽 상단 코너는 좁아진 선체를 따라 챔퍼 */}
+          <path d="M296,196 L518,196 Q532,196 532,210 L532,332 Q532,346 518,346 L210,346 Q196,346 196,332 L196,256 Z" fill="#ffffff" />
           <line x1="200" y1="271" x2="528" y2="271" stroke="#cbd5e1" />
           {/* 이불 주름 */}
           <path d="M310,198 Q348,271 310,344" stroke="#dbe3ec" />
           <path d="M338,198 Q372,271 338,344" stroke="#e6ebf2" />
           {/* 베개 (선미 쪽) */}
           <g fill="#f8fafc" stroke="#b8c2cf">
-            <rect x="208" y="206" width="58" height="56" rx="12" transform="rotate(-7 237 234)" />
-            <rect x="208" y="278" width="58" height="56" rx="12" transform="rotate(6 237 306)" />
-            <path d="M222,222 l28,24 M222,296 l28,22" stroke="#dbe3ec" strokeWidth={1.5} />
+            <rect x="214" y="238" width="58" height="50" rx="12" transform="rotate(-7 243 263)" />
+            <rect x="214" y="294" width="58" height="50" rx="12" transform="rotate(6 243 319)" />
+            <path d="M228,252 l28,22 M228,310 l28,20" stroke="#dbe3ec" strokeWidth={1.5} />
           </g>
           {/* 풋 로커 */}
           <rect x="196" y="366" width="118" height="50" rx="8" fill="#eef2f7" stroke="#b8c2cf" />
@@ -154,7 +155,7 @@ export default function DeckPlanSvg({ activeZone, onZoneClick, layers }: Props) 
           <path d="M378,552 q22,-12 40,0" stroke="#cbd5e1" strokeWidth={1.5} />
           <path d="M458,566 q22,-24 52,-13 q30,11 24,42 q-6,27 -38,26 q-34,-2 -40,-26 q-5,-17 2,-29 Z" fill="#eef2f7" stroke="#b8c2cf" />
           <path d="M476,580 q18,-10 32,0" stroke="#cbd5e1" strokeWidth={1.5} />
-          <rect x="230" y="636" width="200" height="42" rx="8" fill="#eef2f7" stroke="#b8c2cf" />
+          <rect x="260" y="596" width="170" height="40" rx="8" fill="#eef2f7" stroke="#b8c2cf" />
         </g>
 
         {/* ===== 후방 헤드 (좌현): 로커 + 변기 + 세면대 + 샤워 ===== */}
@@ -258,9 +259,9 @@ export default function DeckPlanSvg({ activeZone, onZoneClick, layers }: Props) 
 
         {/* ===== 전방 행잉 로커 (좌현, WWW) ===== */}
         <g>
-          <rect x="1206" y="162" width="60" height="132" fill="#eef2f7" stroke="#b8c2cf" />
-          <Zigzag x={1210} y={186} n={5} w={5.5} h={13} />
-          <Zigzag x={1210} y={238} n={5} w={5.5} h={13} />
+          <rect x="1206" y="184" width="60" height="110" fill="#eef2f7" stroke="#b8c2cf" />
+          <Zigzag x={1210} y={206} n={5} w={5.5} h={13} />
+          <Zigzag x={1210} y={248} n={5} w={5.5} h={13} />
         </g>
 
         {/* ===== 오너 선실: 아일랜드 베드 + 베개 + 벤치 + 화장대 ===== */}
@@ -297,20 +298,20 @@ export default function DeckPlanSvg({ activeZone, onZoneClick, layers }: Props) 
       {/* ---------- 포트라이트(현창) ---------- */}
       {on("portlights") && (
       <g id="portlights" fill="#dbeafe" stroke="#94a3b8" strokeWidth={1.5} pointerEvents="none">
-        {/* 좌현 (상단) */}
-        <rect x="430" y="160" width="64" height="11" rx="5" transform="rotate(-3 462 165)" />
-        <rect x="700" y="151" width="64" height="11" rx="5" transform="rotate(-1 732 156)" />
-        <rect x="950" y="151" width="64" height="11" rx="5" transform="rotate(1 982 156)" />
-        <rect x="1180" y="159" width="64" height="11" rx="5" transform="rotate(6 1212 164)" />
-        <rect x="1400" y="183" width="64" height="11" rx="5" transform="rotate(12 1432 188)" />
-        <rect x="1580" y="224" width="58" height="11" rx="5" transform="rotate(20 1609 229)" />
+        {/* 좌현 (상단) — 선체선 안쪽 9px, 국소 기울기 정렬 */}
+        <rect x="430" y="161" width="64" height="11" rx="5" transform="rotate(-4 462 166)" />
+        <rect x="700" y="152" width="64" height="11" rx="5" transform="rotate(0 732 157)" />
+        <rect x="950" y="157" width="64" height="11" rx="5" transform="rotate(3 982 162)" />
+        <rect x="1180" y="174" width="64" height="11" rx="5" transform="rotate(6 1212 179)" />
+        <rect x="1400" y="205" width="64" height="11" rx="5" transform="rotate(12 1432 210)" />
+        <rect x="1580" y="252" width="58" height="11" rx="5" transform="rotate(18 1609 257)" />
         {/* 우현 (하단) */}
-        <rect x="430" y="679" width="64" height="11" rx="5" transform="rotate(3 462 684)" />
-        <rect x="700" y="688" width="64" height="11" rx="5" transform="rotate(1 732 693)" />
-        <rect x="950" y="688" width="64" height="11" rx="5" transform="rotate(-1 982 693)" />
-        <rect x="1180" y="680" width="64" height="11" rx="5" transform="rotate(-6 1212 685)" />
-        <rect x="1400" y="656" width="64" height="11" rx="5" transform="rotate(-12 1432 661)" />
-        <rect x="1580" y="615" width="58" height="11" rx="5" transform="rotate(-20 1609 620)" />
+        <rect x="430" y="678" width="64" height="11" rx="5" transform="rotate(4 462 683)" />
+        <rect x="700" y="687" width="64" height="11" rx="5" transform="rotate(0 732 692)" />
+        <rect x="950" y="682" width="64" height="11" rx="5" transform="rotate(-3 982 687)" />
+        <rect x="1180" y="665" width="64" height="11" rx="5" transform="rotate(-6 1212 670)" />
+        <rect x="1400" y="634" width="64" height="11" rx="5" transform="rotate(-12 1432 639)" />
+        <rect x="1580" y="587" width="58" height="11" rx="5" transform="rotate(-18 1609 592)" />
       </g>
       )}
     </>
