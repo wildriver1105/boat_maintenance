@@ -3,7 +3,7 @@
 //
 // 배치 (원본 이미지 기준):
 //  - 선미 좌현: 후방 선실(더블 베드+베개) / 선미 우현: 후방 선실(수납/세일백)
-//  - 좌현 중앙: 후방 헤드(변기·세면대·샤워) + 행잉 로커(사선 해칭)
+//  - 좌현 중앙: 행잉 로커(사선 해칭) + 후방 헤드(변기·세면대·샤워) + 차트 테이블
 //  - 중앙: 컴패니언웨이(부채꼴 계단) + 엔진(계단 아래)
 //  - 우현 중앙: 갤리(짐벌 스토브 그리드 + 더블 싱크 + 하부 로커)
 //  - 살롱: U자 세틀리(좌현) + 접이식 테이블 + 세틀리(우현), 마스트
@@ -26,7 +26,8 @@ type Props = {
 const ZONES: { id: string; label: string; d: string }[] = [
   { id: "zone-aft-cabin-port", label: "후방 선실 (좌현)", d: "M556,157 L500,161 L450,164 L400,170 L350,180 L300,194 L260,209 L230,226 L212,238 L196,253 L175,283 L160,313 L152,327 L152,422 L556,422 Z" },
   { id: "zone-aft-cabin-stbd", label: "후방 선실 (우현)", d: "M556,428 L152,428 L152,523 L160,537 L175,567 L196,597 L212,612 L230,624 L260,641 L300,656 L350,670 L400,680 L450,686 L500,689 L556,693 Z" },
-  { id: "zone-aft-head", label: "후방 헤드 (좌현)", d: "M560,156 L808,156 L808,308 L560,308 Z" },
+  { id: "zone-aft-head", label: "후방 헤드 (좌현)", d: "M650,156 L808,156 L808,308 L650,308 Z" },
+  { id: "zone-chart", label: "차트 테이블 (좌현)", d: "M814,156 L903,156 L903,308 L814,308 Z" },
   { id: "zone-companionway", label: "컴패니언웨이/엔진", d: "M560,312 L903,312 L903,468 L560,468 Z" },
   { id: "zone-galley", label: "갤리 (우현)", d: "M560,472 L903,472 L903,694 L560,694 Z" },
   { id: "zone-saloon", label: "살롱", d: "M907,156 L1014,161 L1100,166 L1200,175 L1228,178 L1228,672 L1200,675 L1100,684 L1014,689 L907,694 Z" },
@@ -105,7 +106,8 @@ export default function DeckPlanSvg({ activeZone, onZoneClick, layers }: Props) 
         <line x1="560" y1="152" x2="560" y2="348" />
         <line x1="560" y1="404" x2="560" y2="446" />
         <line x1="560" y1="502" x2="560" y2="698" />
-        {/* 후방 헤드 벽 */}
+        {/* 후방 헤드 벽 — 좌측 벽(x=650)이 변기 바로 옆. 560~650 은 행잉 로커 구획 */}
+        <line x1="650" y1="152" x2="650" y2="310" />
         <line x1="810" y1="152" x2="810" y2="310" />
         <line x1="560" y1="310" x2="726" y2="310" />
         <line x1="786" y1="310" x2="810" y2="310" />
@@ -158,24 +160,32 @@ export default function DeckPlanSvg({ activeZone, onZoneClick, layers }: Props) 
           <rect x="260" y="596" width="170" height="40" rx="8" fill="#eef2f7" stroke="#b8c2cf" />
         </g>
 
-        {/* ===== 후방 헤드 (좌현): 로커 + 변기 + 세면대 + 샤워 ===== */}
+        {/* ===== 후방 좌현: 행잉 로커(560~650) + 헤드(650~810) + 차트 테이블(814~903) ===== */}
         <g>
-          {/* 행잉 로커 (WWW) */}
-          <rect x="566" y="154" width="58" height="88" fill="#eef2f7" stroke="#b8c2cf" />
-          <Zigzag x={569} y={170} n={5} w={5.5} h={12} />
-          <Zigzag x={569} y={204} n={5} w={5.5} h={12} />
-          {/* 변기 (상단 벽 붙임) */}
-          <rect x="670" y="156" width="38" height="15" rx="4" fill="#ffffff" />
-          <ellipse cx="689" cy="196" rx="17" ry="22" fill="#ffffff" />
-          <ellipse cx="689" cy="198" rx="10" ry="14" stroke="#cbd5e1" />
+          {/* 행잉 로커 (WWW) — 헤드 밖, 별도 구획 */}
+          <rect x="570" y="158" width="66" height="140" fill="#eef2f7" stroke="#b8c2cf" />
+          <Zigzag x={573} y={182} n={5} w={5.5} h={12} />
+          <Zigzag x={573} y={250} n={5} w={5.5} h={12} />
+          {/* 변기 — 좌측 벽 바로 옆 (왼쪽 여유 공간 없음) */}
+          <rect x="662" y="156" width="38" height="15" rx="4" fill="#ffffff" />
+          <ellipse cx="681" cy="196" rx="17" ry="22" fill="#ffffff" />
+          <ellipse cx="681" cy="198" rx="10" ry="14" stroke="#cbd5e1" />
           {/* 세면대 카운터 */}
           <rect x="726" y="152" width="78" height="76" rx="10" fill="#eef2f7" />
           <circle cx="765" cy="190" r="17" fill="#ffffff" />
           <circle cx="765" cy="190" r="8" stroke="#cbd5e1" />
           <circle cx="765" cy="167" r="3" fill="#94a3b8" />
-          {/* 샤워 */}
-          <circle cx="606" cy="278" r="6" stroke="#b8c2cf" />
-          <path d="M598,266 l-8,-10 M606,264 v-13 M614,266 l8,-10" stroke="#b8c2cf" strokeWidth={1.5} />
+          {/* 샤워 (헤드 하부) */}
+          <circle cx="676" cy="278" r="6" stroke="#b8c2cf" />
+          <path d="M668,266 l-8,-10 M676,264 v-13 M684,266 l8,-10" stroke="#b8c2cf" strokeWidth={1.5} />
+        </g>
+
+        {/* ===== 차트 테이블 (헤드 우측) ===== */}
+        <g>
+          <rect x="816" y="168" width="80" height="96" rx="6" fill="#eef2f7" stroke="#94a3b8" />
+          <rect x="826" y="178" width="60" height="56" rx="4" stroke="#cbd5e1" />
+          <line x1="826" y1="252" x2="886" y2="252" stroke="#cbd5e1" />
+          <circle cx="856" cy="286" r="14" fill="#ffffff" stroke="#b8c2cf" />
         </g>
 
         {/* ===== 컴패니언웨이: 부채꼴 계단 + 엔진 해치 ===== */}
