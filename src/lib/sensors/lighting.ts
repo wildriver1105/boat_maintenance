@@ -1,7 +1,7 @@
 // 조명 센서 소스 — ESP32 시리얼 브리지 상태를 DeviceReading 으로 변환.
 // config.lighting 이 있는 장비가 대상. 브리지가 끊겨 있으면 offline 로 정직하게 표시.
 import type { Device, DeviceReading } from "@/lib/types";
-import { getLightState } from "@/lib/lighting/serial";
+import { getLightState } from "@/lib/lighting/tcp";
 import type { SensorSource } from "./types";
 
 export function isLightingDevice(d: Device): boolean {

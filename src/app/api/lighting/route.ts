@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { AUTH_DISABLED } from "@/lib/auth-mode";
-import { getLightState, setLightDuty } from "@/lib/lighting/serial";
+import { getLightState, setLightDuty } from "@/lib/lighting/tcp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
