@@ -8,44 +8,106 @@ import {
   type Device,
   type DeviceReading,
 } from "@/lib/types";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { detailRows, summarize } from "@/lib/format";
 import { childrenOf } from "@/lib/deviceGroups";
 import { bindingOf } from "@/lib/victron/binding";
 
+/** 손을 뗀 뒤에도 이만큼은 내 값을 유지한다 (확인이 빨리 와도 깜빡이지 않게) */
+const HOLD_MS = 1000;
+/** 보드 확인이 끝내 안 와도 이 시간이 지나면 수신값으로 되돌아간다 */
+const SETTLE_MS = 6000;
+/** 끄는 중에도 계속 보내되, TCP 콘솔이 잠기지 않을 만큼만 솎아낸다 */
+const SEND_DEBOUNCE_MS = 120;
+
 /**
  * 조명 디머 — config.lighting 장비 전용.
  * 현재 밝기는 SSE 리딩(values.duty)으로 들어오고, 조절은 /api/lighting PUT.
- * 슬라이더는 드래그 중 즉시 쏘지 않고 120ms 디바운스로 시리얼을 보호한다.
+ *
+ * 전송은 끌면서 계속 한다(조명이 손을 따라와야 조절이 편하다). 막아야 하는 건
+ * **수신뿐**이다 — SSE 는 최대 2초 늦으므로 조작 중에 도착한 옛 값이 그대로
+ * 그려지면 노브가 손 밑에서 제자리로 튕긴다. 그래서
+ *
+ *   잡는 순간 → 수신 차단(전송은 계속, SEND_DEBOUNCE_MS 로 솎아서)
+ *   손 뗌     → 마지막 위치를 한 번 더 확정 전송
+ *   그 뒤     → 보드가 그 값을 확인해 주면 수신값에 자리를 넘긴다
+ *
+ * 손을 뗀 뒤에도 곧장 놓아주지 않는 이유 역시 같은 지연 때문이다. 확인이 끝내
+ * 안 오면 SETTLE_MS 뒤에 수신값으로 되돌려, 어긋난 채 굳지 않게 한다.
  */
 function DimmerControl({ reading }: { reading?: DeviceReading }) {
   const live = typeof reading?.values.duty === "number" ? (reading.values.duty as number) : null;
   const connected = reading?.status === "ok";
-  const [drag, setDrag] = useState<number | null>(null);
+  const [local, setLocal] = useState<number | null>(null);
+  const [holding, setHolding] = useState(false); // 슬라이더를 잡고 있는 동안 true
   const [err, setErr] = useState<string | null>(null);
-  const shown = drag ?? live ?? 0;
+  const localRef = useRef<number | null>(null); // 이벤트 핸들러에서 읽을 최신값
+  const releasedAt = useRef(0);
+  const shown = local ?? live ?? 0;
 
-  // 외부(음성 등)에서 바뀐 값 반영 — 드래그 중이 아닐 때만
+  const setBoth = (v: number | null) => {
+    localRef.current = v;
+    setLocal(v);
+  };
+
+  const send = useCallback(async (duty: number) => {
+    releasedAt.current = Date.now();
+    try {
+      const r = await fetch("/api/lighting", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ duty }),
+      });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `HTTP ${r.status}`);
+      setErr(null);
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }, []);
+
+  // 손 뗌 감지는 창 전체에서 — 슬라이더 밖에서 놓아도 확실히 커밋된다
   useEffect(() => {
-    if (drag == null) return;
-    const t = setTimeout(async () => {
-      try {
-        const r = await fetch("/api/lighting", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ duty: drag }),
-        });
-        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `HTTP ${r.status}`);
-        setErr(null);
-      } catch (e) {
-        setErr((e as Error).message);
-      }
-      setDrag(null);
-    }, 120);
-    return () => clearTimeout(t);
-  }, [drag]);
+    if (!holding) return;
+    const end = () => {
+      setHolding(false);
+      // 솎다가 흘린 마지막 위치가 있을 수 있으므로 여기서 한 번 확정한다
+      if (sendTimer.current) clearTimeout(sendTimer.current);
+      if (localRef.current != null) void send(localRef.current);
+    };
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    window.addEventListener("touchend", end);
+    return () => {
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      window.removeEventListener("touchend", end);
+    };
+  }, [holding, send]);
 
-  const put = (duty: number) => setDrag(duty);
+  // 인계 — 조작이 끝났고 보드가 값을 확인했으면 수신값에 자리를 넘긴다
+  useEffect(() => {
+    if (local == null || holding) return;
+    const elapsed = Date.now() - releasedAt.current;
+    const wait = live === local ? HOLD_MS - elapsed : SETTLE_MS - elapsed;
+    const t = setTimeout(() => setBoth(null), Math.max(0, wait));
+    return () => clearTimeout(t);
+  }, [local, live, holding]);
+
+  const sendTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** 버튼 — 지연 없이 즉시 */
+  const putNow = (duty: number) => {
+    if (sendTimer.current) clearTimeout(sendTimer.current);
+    setBoth(duty);
+    void send(duty);
+  };
+
+  /** 슬라이더/키보드 — 화면은 즉시, 전송은 솎아서 (끄는 동안에도 계속 보낸다) */
+  const onSlide = (duty: number) => {
+    setBoth(duty);
+    if (sendTimer.current) clearTimeout(sendTimer.current);
+    sendTimer.current = setTimeout(() => void send(duty), SEND_DEBOUNCE_MS);
+  };
 
   return (
     <div className="mt-4 rounded-xl bg-white/70 p-3 ring-1 ring-black/5">
@@ -62,7 +124,8 @@ function DimmerControl({ reading }: { reading?: DeviceReading }) {
         step={1}
         value={shown}
         disabled={!connected}
-        onChange={(e) => put(Number(e.target.value))}
+        onPointerDown={() => setHolding(true)}
+        onChange={(e) => onSlide(Number(e.target.value))}
         className="mt-2 w-full accent-amber-500 disabled:opacity-40"
         aria-label="조명 밝기"
       />
@@ -71,11 +134,11 @@ function DimmerControl({ reading }: { reading?: DeviceReading }) {
           ["끄기", 0],
           ["은은하게", 20],
           ["보통", 60],
-          ["최대", 100],
+          ["켜기", 100],
         ].map(([label, duty]) => (
           <button
             key={label as string}
-            onClick={() => put(duty as number)}
+            onClick={() => putNow(duty as number)}
             disabled={!connected}
             className="flex-1 rounded-lg border border-slate-200 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
           >
@@ -85,7 +148,7 @@ function DimmerControl({ reading }: { reading?: DeviceReading }) {
       </div>
       {!connected && (
         <p className="mt-2 text-[11px] text-slate-400">
-          ESP32 디머가 응답하지 않습니다 — 조명 회로 전원과 USB 연결을 확인하세요.
+          ESP32 디머가 응답하지 않습니다 — 조명 전원과 WiFi 연결을 확인하세요.
         </p>
       )}
       {err && <p className="mt-2 text-[11px] text-red-500">{err}</p>}
