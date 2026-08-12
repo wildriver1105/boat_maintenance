@@ -40,6 +40,9 @@ export function summarize(device: Device, r?: DeviceReading): string {
       return v.online ? `온라인 · ${v.signal}%` : "오프라인";
     case "safety":
       return v.armed ? "정상" : "점검 필요";
+    case "lighting":
+      if (typeof v.duty !== "number") return "미수신";
+      return v.duty > 0 ? `밝기 ${v.duty}%` : "꺼짐";
     default:
       return typeof v.value === "number" ? String(v.value) : "—";
   }
@@ -99,6 +102,12 @@ export function detailRows(device: Device, r?: DeviceReading): [string, string][
       break;
     case "safety":
       rows.push(["상태", v.armed ? "정상(Armed)" : "점검 필요"]);
+      break;
+    case "lighting":
+      if (typeof v.duty === "number") {
+        rows.push(["상태", v.duty > 0 ? "켜짐" : "꺼짐"]);
+        rows.push(["밝기", `${v.duty}%`]);
+      }
       break;
     default:
       Object.entries(v).forEach(([k, val]) => rows.push([k, String(val)]));

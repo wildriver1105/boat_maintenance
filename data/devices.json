@@ -670,5 +670,21 @@
       }
     },
     "notes": "하우스 리튬(LiFePO4) 배터리 12V 300Ah — Victron 시스템 하단 4개 중 하나"
+  },
+  {
+    "id": "dev-cabin-light-aft-port",
+    "name": "선실 조명 (좌현 후방)",
+    "category": "lighting",
+    "position": {
+      "x": 350,
+      "y": 300
+    },
+    "sideY": 335,
+    "sensorId": "light-aft-port",
+    "enabled": true,
+    "config": {
+      "lighting": true
+    },
+    "notes": "ESP32 + HW-517 PWM 디머 (USB 시리얼, d 0~100). 펌웨어: ~/Desktop/lighting"
   }
 ]

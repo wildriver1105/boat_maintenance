@@ -8,9 +8,90 @@ import {
   type Device,
   type DeviceReading,
 } from "@/lib/types";
+import { useEffect, useState } from "react";
 import { detailRows, summarize } from "@/lib/format";
 import { childrenOf } from "@/lib/deviceGroups";
 import { bindingOf } from "@/lib/victron/binding";
+
+/**
+ * 조명 디머 — config.lighting 장비 전용.
+ * 현재 밝기는 SSE 리딩(values.duty)으로 들어오고, 조절은 /api/lighting PUT.
+ * 슬라이더는 드래그 중 즉시 쏘지 않고 120ms 디바운스로 시리얼을 보호한다.
+ */
+function DimmerControl({ reading }: { reading?: DeviceReading }) {
+  const live = typeof reading?.values.duty === "number" ? (reading.values.duty as number) : null;
+  const connected = reading?.status === "ok";
+  const [drag, setDrag] = useState<number | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const shown = drag ?? live ?? 0;
+
+  // 외부(음성 등)에서 바뀐 값 반영 — 드래그 중이 아닐 때만
+  useEffect(() => {
+    if (drag == null) return;
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch("/api/lighting", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ duty: drag }),
+        });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `HTTP ${r.status}`);
+        setErr(null);
+      } catch (e) {
+        setErr((e as Error).message);
+      }
+      setDrag(null);
+    }, 120);
+    return () => clearTimeout(t);
+  }, [drag]);
+
+  const put = (duty: number) => setDrag(duty);
+
+  return (
+    <div className="mt-4 rounded-xl bg-white/70 p-3 ring-1 ring-black/5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">밝기</span>
+        <span className="text-sm font-semibold tabular-nums text-slate-800">
+          {connected ? `${shown}%` : "미연결"}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={1}
+        value={shown}
+        disabled={!connected}
+        onChange={(e) => put(Number(e.target.value))}
+        className="mt-2 w-full accent-amber-500 disabled:opacity-40"
+        aria-label="조명 밝기"
+      />
+      <div className="mt-2 flex gap-2">
+        {[
+          ["끄기", 0],
+          ["은은하게", 20],
+          ["보통", 60],
+          ["최대", 100],
+        ].map(([label, duty]) => (
+          <button
+            key={label as string}
+            onClick={() => put(duty as number)}
+            disabled={!connected}
+            className="flex-1 rounded-lg border border-slate-200 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {!connected && (
+        <p className="mt-2 text-[11px] text-slate-400">
+          ESP32 디머가 응답하지 않습니다 — 조명 회로 전원과 USB 연결을 확인하세요.
+        </p>
+      )}
+      {err && <p className="mt-2 text-[11px] text-red-500">{err}</p>}
+    </div>
+  );
+}
 
 type Props = {
   device: Device;
@@ -96,6 +177,9 @@ export default function DeviceDetailPanel({
           <span className="text-xs font-normal opacity-70">· 센서 미연결</span>
         )}
       </div>
+
+      {/* 조명 디머 (config.lighting 장비) */}
+      {device.config?.lighting === true && <DimmerControl reading={reading} />}
 
       {/* 그룹: 구성 기기(생태계) 목록 */}
       {isGroup ? (

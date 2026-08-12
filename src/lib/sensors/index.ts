@@ -9,8 +9,26 @@
 //
 // 이후 CAN/NMEA2000/ESP32 소스를 추가할 때는 여기에 케이스를 늘리고
 // CompositeSensorSource 처럼 합치면 된다.
+import type { Device, DeviceReading } from "@/lib/types";
 import type { SensorSource } from "./types";
 import { VictronSensorSource } from "./victron";
+import { LightingSensorSource, isLightingDevice } from "./lighting";
+import { bindingOf } from "@/lib/victron/binding";
+
+/** 실측 소스 합성: Victron(MQTT) + 조명 ESP32(시리얼). 가짜 값은 만들지 않는다. */
+class CompositeSensorSource implements SensorSource {
+  readonly name = "victron+esp32";
+  private victron = new VictronSensorSource();
+  private lighting = new LightingSensorSource();
+
+  async getReadings(devices: Device[]): Promise<DeviceReading[]> {
+    const [a, b] = await Promise.all([
+      this.victron.getReadings(devices.filter((d) => bindingOf(d))),
+      this.lighting.getReadings(devices.filter((d) => isLightingDevice(d))),
+    ]);
+    return [...a, ...b];
+  }
+}
 
 let cached: SensorSource | null = null;
 
@@ -19,7 +37,7 @@ export function getSensorSource(): SensorSource {
   switch (process.env.SENSOR_SOURCE) {
     // case "can": cached = new CanSensorSource(); break;
     default:
-      cached = new VictronSensorSource();
+      cached = new CompositeSensorSource();
   }
   return cached;
 }
