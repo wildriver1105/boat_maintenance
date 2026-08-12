@@ -676,8 +676,8 @@
     "name": "선실 조명 (좌현 후방)",
     "category": "lighting",
     "position": {
-      "x": 546,
-      "y": 300
+      "x": 556,
+      "y": 240
     },
     "sideY": 335,
     "sensorId": "light-aft-port",
