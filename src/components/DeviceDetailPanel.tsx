@@ -173,6 +173,8 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
   const live = reading?.status === "ok" || reading?.status === "warning";
   const [pending, setPending] = useState<boolean | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [advanced, setAdvanced] = useState(false);
+  const [ledLocal, setLedLocal] = useState<number | null>(null);
 
   // 기기가 요청한 상태를 확인해 주면 대기 해제
   useEffect(() => {
@@ -222,6 +224,14 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
   const amps = num("amps");
   const kwh = num("kwh");
   const meteringOnly = reading?.values.meteringOnly === true;
+  // 지금 걸려 있는 타이머 (켜짐이면 끄기 예약, 꺼짐이면 켜기 예약)
+  const countdown = (on ? num("countdownOff") : num("countdownOn")) ?? 0;
+  // 표시등 밝기는 이 펌웨어(v47)가 현재값을 보고하지 않는다 — 쓰기만 된다.
+  // 모르는 값을 0% 처럼 보이게 두면 계기를 믿을 수 없게 되므로, 내가 설정한
+  // 값이 있을 때만 숫자를 보여주고 그 전에는 모른다고 적는다.
+  const ledReported = num("ledBrightness");
+  const ledShown = ledLocal ?? ledReported ?? 0;
+  const ledKnown = ledLocal != null || ledReported != null;
 
   // 이 플러그가 감당하는 한계(3200W)를 기준으로 부하가 어디쯤인지 보여준다.
   // 세 자리 숫자만 보면 100W 가 큰지 작은지 판단이 안 된다.
@@ -279,11 +289,15 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
         ].map(([label, next]) => {
           const target = next as boolean;
           const active = on === target;
+          // 잠금 중에는 끄기가 펌웨어에서 무시된다 — 눌리는데 아무 일도
+          // 일어나지 않으면 고장으로 읽히므로, 아예 못 누르게 하고 이유를 적는다
+          const blocked = meteringOnly && target === false;
           return (
             <button
               key={label as string}
               onClick={() => send(target)}
-              disabled={!live || pending != null}
+              title={blocked ? "끄기 잠금이 켜져 있습니다" : undefined}
+              disabled={!live || pending != null || blocked}
               className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-40 ${
                 active
                   ? target
@@ -300,6 +314,11 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
       {pending != null && (
         <p className="mt-2 text-[11px] text-slate-400">
           {pending ? "켜는" : "끄는"} 중 — 플러그 응답을 기다립니다…
+        </p>
+      )}
+      {meteringOnly && (
+        <p className="mt-2 text-[11px] text-amber-600">
+          ▲ 끄기 잠금이 켜져 있어 끌 수 없습니다 — 끄려면 아래 체크를 해제하세요.
         </p>
       )}
 
@@ -319,6 +338,106 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
             릴레이가 켜진 채 고정되어 앱·음성으로 꺼지지 않습니다. 계측은 계속됩니다.
           </span>
         </label>
+      )}
+
+      {live && (
+        <div className="mt-2 border-t border-slate-100 pt-2.5">
+          <button
+            onClick={() => setAdvanced((v) => !v)}
+            className="flex w-full items-center justify-between text-[11px] font-medium text-slate-500 hover:text-slate-700"
+          >
+            <span>타이머 · 정전 복구 · 표시등</span>
+            <span>{advanced ? "▾" : "▸"}</span>
+          </button>
+
+          {advanced && (
+            <div className="mt-2.5 space-y-3">
+              {/* 타이머 — 지금 상태의 반대로 뒤집는다 (켜져 있으면 끄기 예약) */}
+              <div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[11px] text-slate-500">
+                    타이머 {on ? "(끄기 예약)" : "(켜기 예약)"}
+                  </span>
+                  <span className="text-[11px] tabular-nums text-slate-400">
+                    {countdown > 0 ? `${Math.ceil(countdown / 60)}분 남음` : "없음"}
+                  </span>
+                </div>
+                <div className="mt-1 flex gap-1.5">
+                  {[30, 60, 180].map((min) => (
+                    <button
+                      key={min}
+                      onClick={() =>
+                        void sendOption(
+                          on
+                            ? { countdown_to_turn_off: min * 60 }
+                            : { countdown_to_turn_on: min * 60 },
+                        )
+                      }
+                      className="flex-1 rounded-lg border border-slate-200 py-1 text-[11px] text-slate-600 hover:bg-slate-50"
+                    >
+                      {min < 60 ? `${min}분` : `${min / 60}시간`}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() =>
+                      void sendOption({ countdown_to_turn_off: 0, countdown_to_turn_on: 0 })
+                    }
+                    disabled={countdown === 0}
+                    className="flex-1 rounded-lg border border-slate-200 py-1 text-[11px] text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+
+              {/* 정전 복구 후 동작 — 무인 상태에서 되살아나면 곤란한 부하는 '꺼짐' */}
+              <div>
+                <label className="text-[11px] text-slate-500" htmlFor={`pob-${device.id}`}>
+                  정전 복구 후
+                </label>
+                <select
+                  id={`pob-${device.id}`}
+                  value={typeof reading?.values.powerOnBehavior === "string" ? (reading.values.powerOnBehavior as string) : "previous"}
+                  onChange={(e) => void sendOption({ power_on_behavior: e.target.value })}
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700"
+                >
+                  <option value="previous">이전 상태 복원</option>
+                  <option value="off">꺼진 채로</option>
+                  <option value="on">켜진 채로</option>
+                  <option value="toggle">반전</option>
+                </select>
+              </div>
+
+              {/* 플러그 표시등 — 선실에서는 0 으로 꺼두는 편이 낫다 */}
+              <div>
+                <div className="flex items-baseline justify-between">
+                  <label className="text-[11px] text-slate-500" htmlFor={`led-${device.id}`}>
+                    표시등 밝기
+                  </label>
+                  <span className="text-[11px] tabular-nums text-slate-400">
+                    {ledKnown ? `${ledShown}%` : "현재값 미보고"}
+                  </span>
+                </div>
+                <input
+                  id={`led-${device.id}`}
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={10}
+                  value={ledShown}
+                  onChange={(e) => setLedLocal(Number(e.target.value))}
+                  onPointerUp={(e) =>
+                    void sendOption({ led_brightness: Number((e.target as HTMLInputElement).value) })
+                  }
+                  onKeyUp={(e) =>
+                    void sendOption({ led_brightness: Number((e.target as HTMLInputElement).value) })
+                  }
+                  className="mt-1 w-full accent-lime-600"
+                />
+              </div>
+            </div>
+          )}
+        </div>
       )}
       {!live && (
         <p className="mt-2 text-[11px] text-slate-400">

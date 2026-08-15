@@ -58,6 +58,13 @@ export class ZigbeeSensorSource implements SensorSource {
       // 켜진 채 고정되어 있는가 (UI 의 "끄기 잠금")
       if (typeof v.metering_only_mode === "string")
         values.meteringOnly = v.metering_only_mode === "ON";
+      const led = num(v.led_brightness);
+      if (led !== undefined) values.ledBrightness = led;
+      // 남은 타이머 (0 = 없음)
+      const cOff = num(v.countdown_to_turn_off);
+      const cOn = num(v.countdown_to_turn_on);
+      if (cOff !== undefined) values.countdownOff = cOff;
+      if (cOn !== undefined) values.countdownOn = cOn;
 
       // 값은 오는데 링크가 약하면 경고 — 곧 끊길 수 있다는 신호다
       const status: DeviceStatus = lqi !== undefined && lqi < WEAK_LINK ? "warning" : "ok";
