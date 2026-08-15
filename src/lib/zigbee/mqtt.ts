@@ -180,6 +180,18 @@ export function requestZigbeeState(id: string) {
   b.client.publish(`${BASE}/${id}/get`, JSON.stringify({ state: "" }));
 }
 
+/**
+ * 스위치 켜기/끄기. 실제 전환 여부는 기기가 되돌려주는 상태로 확인한다
+ * (낙관적으로 로컬 값을 바꾸지 않는다 — 안 켜졌는데 켜졌다고 보이면 안 된다).
+ * 호출자는 이 id 가 devices.json 에 등록된 기기인지 먼저 확인해야 한다.
+ */
+export function setZigbeeSwitch(id: string, on: boolean): boolean {
+  const b = start();
+  if (!b.client || !b.connected) return false;
+  b.client.publish(`${BASE}/${id}/set`, JSON.stringify({ state: on ? "ON" : "OFF" }));
+  return true;
+}
+
 /** 이 기기를 살아 있는 것으로 볼 수 있는가 (availability 우선) */
 export function isZigbeeDeviceLive(e: ZigbeeDeviceState): boolean {
   if (e.available !== null) return e.available;

@@ -689,11 +689,11 @@
   },
   {
     "id": "dev-plug-1",
-    "name": "스마트 플러그 1",
+    "name": "제습기 스마트 플러그",
     "category": "outlet",
     "position": {
-      "x": 700,
-      "y": 540
+      "x": 889,
+      "y": 504
     },
     "sideY": 560,
     "sensorId": "plug-1",
@@ -708,11 +708,11 @@
   },
   {
     "id": "dev-plug-2",
-    "name": "스마트 플러그 2",
+    "name": "부엌 스마트 플러그",
     "category": "outlet",
     "position": {
-      "x": 980,
-      "y": 600
+      "x": 603,
+      "y": 676
     },
     "sideY": 560,
     "sensorId": "plug-2",
@@ -727,11 +727,11 @@
   },
   {
     "id": "dev-plug-3",
-    "name": "스마트 플러그 3",
+    "name": "게스트룸 스마트 플러그",
     "category": "outlet",
     "position": {
-      "x": 1300,
-      "y": 600
+      "x": 563,
+      "y": 175
     },
     "sideY": 560,
     "sensorId": "plug-3",
