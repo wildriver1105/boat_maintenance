@@ -13,6 +13,7 @@ import { detailRows, summarize } from "@/lib/format";
 import { childrenOf } from "@/lib/deviceGroups";
 import { bindingOf } from "@/lib/victron/binding";
 import { zigbeeBindingOf } from "@/lib/zigbee/binding";
+import { Meter } from "./gauges/Gauges";
 
 /** 손을 뗀 뒤에도 이만큼은 내 값을 유지한다 (확인이 빨리 와도 깜빡이지 않게) */
 const HOLD_MS = 1000;
@@ -200,7 +201,32 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
     }
   };
 
-  const watts = typeof reading?.values.watts === "number" ? (reading.values.watts as number) : null;
+  /** 스위치가 아닌 설정값(계측 전용 모드 등) 변경 */
+  const sendOption = async (set: Record<string, unknown>) => {
+    setErr(null);
+    try {
+      const r = await fetch("/api/zigbee", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: device.id, set }),
+      });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `HTTP ${r.status}`);
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  };
+
+  const num = (k: string) =>
+    typeof reading?.values[k] === "number" ? (reading.values[k] as number) : null;
+  const watts = num("watts");
+  const amps = num("amps");
+  const kwh = num("kwh");
+  const meteringOnly = reading?.values.meteringOnly === true;
+
+  // 이 플러그가 감당하는 한계(3200W)를 기준으로 부하가 어디쯤인지 보여준다.
+  // 세 자리 숫자만 보면 100W 가 큰지 작은지 판단이 안 된다.
+  const LIMIT_W = 3200;
+  const loadSeverity = watts == null ? "unknown" : watts > LIMIT_W * 0.9 ? "crit" : watts > LIMIT_W * 0.7 ? "warn" : "ok";
 
   return (
     <div className="mt-4 rounded-xl bg-white/70 p-3 ring-1 ring-black/5">
@@ -208,11 +234,44 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
         <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">콘센트</span>
         <span className="text-sm font-semibold text-slate-800">
           {!live ? "미연결" : on == null ? "미수신" : on ? "켜짐" : "꺼짐"}
-          {live && on && watts != null && (
-            <span className="ml-1.5 font-normal tabular-nums text-slate-500">{watts} W</span>
-          )}
         </span>
       </div>
+
+      {/* 지금 얼마나 쓰는가 — 이 패널의 대표 수치 */}
+      {live && (
+        <div className="mt-2 rounded-lg bg-slate-50 p-2.5">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-2xl font-semibold text-slate-800">
+              {watts == null ? "—" : watts < 10 ? watts.toFixed(1) : Math.round(watts)}
+            </span>
+            <span className="text-sm text-slate-500">W</span>
+            {amps != null && (
+              <span className="ml-auto text-xs tabular-nums text-slate-400">{amps} A</span>
+            )}
+          </div>
+          <div className="mt-1.5">
+            <Meter
+              label="부하 (최대 3200W)"
+              valueText={watts == null ? "—" : `${Math.round((watts / LIMIT_W) * 100)}%`}
+              ratio={watts == null ? null : watts / LIMIT_W}
+              severity={loadSeverity}
+              note={
+                on === false
+                  ? "꺼져 있어 전력을 쓰지 않습니다"
+                  : watts === 0
+                    ? "물려 있는 기기가 대기 중이거나 없습니다"
+                    : undefined
+              }
+            />
+          </div>
+          {kwh != null && (
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              누적 사용량 <span className="tabular-nums text-slate-500">{kwh} kWh</span>
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="mt-2 flex gap-2">
         {[
           ["끄기", false],
@@ -242,6 +301,24 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
         <p className="mt-2 text-[11px] text-slate-400">
           {pending ? "켜는" : "끄는"} 중 — 플러그 응답을 기다립니다…
         </p>
+      )}
+
+      {/* 계측 전용 모드 — 릴레이를 ON 으로 고정해 실수로 끄지 못하게 한다.
+          제습기·냉장고처럼 꺼진 걸 모르고 지나가면 곤란한 부하용. */}
+      {live && (
+        <label className="mt-3 flex cursor-pointer items-start gap-2 border-t border-slate-100 pt-2.5">
+          <input
+            type="checkbox"
+            checked={meteringOnly}
+            onChange={(e) => void sendOption({ metering_only_mode: e.target.checked ? "ON" : "OFF" })}
+            className="mt-0.5 h-4 w-4 accent-lime-600"
+          />
+          <span className="text-[11px] leading-snug text-slate-500">
+            <span className="font-medium text-slate-700">끄기 잠금 (계측 전용)</span>
+            <br />
+            릴레이가 켜진 채 고정되어 앱·음성으로 꺼지지 않습니다. 계측은 계속됩니다.
+          </span>
+        </label>
       )}
       {!live && (
         <p className="mt-2 text-[11px] text-slate-400">

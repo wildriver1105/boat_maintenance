@@ -15,6 +15,7 @@ import {
   getZigbeeDevice,
   getZigbeeStatus,
   isZigbeeDeviceLive,
+  publishSet,
   setZigbeeSwitch,
 } from "@/lib/zigbee/mqtt";
 
@@ -59,13 +60,38 @@ export async function GET() {
   );
 }
 
+/**
+ * set 으로 넘길 수 있는 설정 키 — 화이트리스트.
+ * 아무 키나 통과시키면 z2m 이 지원하는 모든 명령(펌웨어 갱신 트리거 등)이
+ * 열린 통로가 된다. UI 가 실제로 쓰는 것만 허용한다.
+ */
+const ALLOWED_SET: Record<string, (v: unknown) => boolean> = {
+  // 릴레이를 ON 으로 고정 (실수로 끄지 못하게)
+  metering_only_mode: (v) => v === "ON" || v === "OFF",
+  // 정전 복구 후 동작
+  power_on_behavior: (v) => ["off", "on", "toggle", "previous"].includes(v as string),
+  // 지정 시간 뒤 자동 전환 (초)
+  countdown_to_turn_off: (v) => typeof v === "number" && v >= 0 && v <= 65535,
+  countdown_to_turn_on: (v) => typeof v === "number" && v >= 0 && v <= 65535,
+  // 플러그의 표시등 밝기 (야간 소등용)
+  led_brightness: (v) => typeof v === "number" && v >= 0 && v <= 100,
+};
+
 export async function PUT(req: Request) {
   if (!(await allowed()))
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  const body = (await req.json().catch(() => ({}))) as { id?: unknown; on?: unknown };
-  if (typeof body.id !== "string" || typeof body.on !== "boolean") {
-    return NextResponse.json({ error: "id(문자열)와 on(true/false)이 필요합니다" }, { status: 400 });
+  const body = (await req.json().catch(() => ({}))) as {
+    id?: unknown;
+    on?: unknown;
+    set?: unknown;
+  };
+  const hasSet = body.set !== undefined;
+  if (typeof body.id !== "string" || (typeof body.on !== "boolean" && !hasSet)) {
+    return NextResponse.json(
+      { error: "id(문자열)와 on(true/false) 또는 set(객체)이 필요합니다" },
+      { status: 400 },
+    );
   }
 
   const found = await findBound(body.id);
@@ -81,7 +107,23 @@ export async function PUT(req: Request) {
     );
   }
 
-  if (!setZigbeeSwitch(found.binding.id, body.on)) {
+  if (hasSet) {
+    const set = body.set as Record<string, unknown>;
+    if (typeof set !== "object" || set === null || Array.isArray(set)) {
+      return NextResponse.json({ error: "set 은 객체여야 합니다" }, { status: 400 });
+    }
+    for (const [k, v] of Object.entries(set)) {
+      const check = ALLOWED_SET[k];
+      if (!check) return NextResponse.json({ error: `허용되지 않은 설정: ${k}` }, { status: 400 });
+      if (!check(v)) return NextResponse.json({ error: `${k} 값이 올바르지 않습니다` }, { status: 400 });
+    }
+    if (!publishSet(found.binding.id, set)) {
+      return NextResponse.json({ error: "MQTT 브로커에 연결되어 있지 않습니다" }, { status: 503 });
+    }
+    return NextResponse.json({ ok: true, id: body.id, set });
+  }
+
+  if (!setZigbeeSwitch(found.binding.id, body.on as boolean)) {
     return NextResponse.json({ error: "MQTT 브로커에 연결되어 있지 않습니다" }, { status: 503 });
   }
   // 전환 확인은 기기가 보내는 다음 상태로 이뤄진다 (SSE 로 도착)

@@ -186,9 +186,17 @@ export function requestZigbeeState(id: string) {
  * 호출자는 이 id 가 devices.json 에 등록된 기기인지 먼저 확인해야 한다.
  */
 export function setZigbeeSwitch(id: string, on: boolean): boolean {
+  return publishSet(id, { state: on ? "ON" : "OFF" });
+}
+
+/**
+ * 임의의 set 페이로드 전송 (계측 전용 모드, 정전 복구 동작, 타이머 등).
+ * 어떤 키를 허용할지는 API 라우트가 판단한다 — 여기서는 통로만 제공한다.
+ */
+export function publishSet(id: string, payload: Record<string, unknown>): boolean {
   const b = start();
   if (!b.client || !b.connected) return false;
-  b.client.publish(`${BASE}/${id}/set`, JSON.stringify({ state: on ? "ON" : "OFF" }));
+  b.client.publish(`${BASE}/${id}/set`, JSON.stringify(payload));
   return true;
 }
 

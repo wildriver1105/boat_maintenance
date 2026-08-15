@@ -172,8 +172,17 @@ function DeviceRow({
   );
 }
 
+/** 스마트플러그 목록 (/api/zigbee) — Victron 이 못 보는 개별 AC 부하 */
+type PlugRow = {
+  id: string;
+  name: string;
+  live: boolean;
+  values: Record<string, unknown>;
+};
+
 export default function VictronPanel({ onClose }: { onClose: () => void }) {
   const [snap, setSnap] = useState<VictronSnapshot | null>(null);
+  const [plugs, setPlugs] = useState<PlugRow[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -190,6 +199,16 @@ export default function VictronPanel({ onClose }: { onClose: () => void }) {
         }
       } catch (e) {
         if (alive) setFetchError((e as Error).message);
+      }
+      // 플러그는 실패해도 Victron 표시를 막지 않는다 (별개 계통)
+      try {
+        const r = await fetch("/api/zigbee", { cache: "no-store" });
+        if (r.ok) {
+          const d = (await r.json()) as { plugs?: PlugRow[] };
+          if (alive) setPlugs(d.plugs ?? []);
+        }
+      } catch {
+        /* 무시 */
       }
     };
     void load();
@@ -310,6 +329,44 @@ export default function VictronPanel({ onClose }: { onClose: () => void }) {
                   ]}
                 />
               </div>
+
+              {/* AC 콘센트별 소비 — Victron 은 AC 부하 총합만 보므로 내역은 여기서만 보인다 */}
+              {plugs.length > 0 && (
+                <Section title="콘센트별 소비 (스마트플러그)">
+                  <div className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5">
+                    <Bars
+                      items={plugs.map((p) => {
+                        const w = typeof p.values.power === "number" ? (p.values.power as number) : null;
+                        const on = p.values.state === "ON";
+                        return {
+                          id: p.id,
+                          label: p.name,
+                          // 꺼졌거나 미연결이면 0 이 아니라 "값 없음"으로 둔다
+                          value: !p.live ? null : on ? (w ?? 0) : 0,
+                          sub: !p.live ? "미연결" : on ? undefined : "꺼짐",
+                        };
+                      })}
+                    />
+                    <div className="mt-2 flex items-baseline justify-between border-t border-slate-100 pt-2">
+                      <span className="text-xs text-slate-500">플러그 합계</span>
+                      <span className="text-sm font-semibold tabular-nums text-slate-700">
+                        {plugs.some((p) => p.live)
+                          ? `${Math.round(
+                              plugs.reduce(
+                                (t, p) =>
+                                  t +
+                                  (p.live && p.values.state === "ON" && typeof p.values.power === "number"
+                                    ? (p.values.power as number)
+                                    : 0),
+                                0,
+                              ),
+                            )} W`
+                          : "—"}
+                      </span>
+                    </div>
+                  </div>
+                </Section>
+              )}
 
               {/* 솔라 4대 상대 발전량 — 크기 비교라 단일 색상 농도만 사용 */}
               {snap.solarChargers.length > 0 && (

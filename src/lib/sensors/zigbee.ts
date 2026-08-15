@@ -55,6 +55,9 @@ export class ZigbeeSensorSource implements SensorSource {
       if (freq !== undefined) values.hz = freq;
       if (lqi !== undefined) values.lqi = lqi;
       if (typeof v.power_on_behavior === "string") values.powerOnBehavior = v.power_on_behavior;
+      // 켜진 채 고정되어 있는가 (UI 의 "끄기 잠금")
+      if (typeof v.metering_only_mode === "string")
+        values.meteringOnly = v.metering_only_mode === "ON";
 
       // 값은 오는데 링크가 약하면 경고 — 곧 끊길 수 있다는 신호다
       const status: DeviceStatus = lqi !== undefined && lqi < WEAK_LINK ? "warning" : "ok";
