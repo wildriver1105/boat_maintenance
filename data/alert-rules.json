@@ -1,8 +1,79 @@
-{
-  "plug-power-rise": {
-    "enabled": false,
-    "params": {
-      "watts": 50
-    }
+[
+  {
+    "name": "장비 경고 전환",
+    "scope": "device",
+    "deviceId": "*",
+    "metric": "status",
+    "op": "becomes",
+    "value": "alert",
+    "priority": "emergency",
+    "id": "29f53e14-a10c-4d8e-aaff-e67b55be77a9",
+    "enabled": false
+  },
+  {
+    "name": "장비 주의 전환",
+    "scope": "device",
+    "deviceId": "*",
+    "metric": "status",
+    "op": "becomes",
+    "value": "warning",
+    "priority": "high",
+    "id": "40337c39-fa5a-4e25-934d-e94c4f01ac85",
+    "enabled": false
+  },
+  {
+    "name": "장비 통신 두절",
+    "scope": "device",
+    "deviceId": "*",
+    "metric": "status",
+    "op": "becomes",
+    "value": "offline",
+    "priority": "normal",
+    "id": "ce4c6089-8fae-4f63-9cc0-3eb57ef26e39",
+    "enabled": false
+  },
+  {
+    "name": "배터리 잔량 부족",
+    "scope": "system",
+    "metric": "soc",
+    "op": "below",
+    "value": 50,
+    "priority": "high",
+    "id": "04c35db1-9cb6-45d5-9826-dc74c486f0a8",
+    "enabled": false
+  },
+  {
+    "name": "육상 전원 끊김",
+    "scope": "system",
+    "metric": "acInputConnected",
+    "op": "becomes",
+    "value": "false",
+    "priority": "high",
+    "id": "93fcb140-e181-4eb4-b482-23e0263cfd24",
+    "enabled": false
+  },
+  {
+    "name": "콘센트 소비전력 급상승",
+    "scope": "device",
+    "deviceId": "*",
+    "metric": "watts",
+    "op": "above",
+    "value": 50,
+    "priority": "high",
+    "note": "평소 쉬던 펌프가 돌기 시작한 것을 잡아냅니다.",
+    "id": "d5226bf4-6f1b-4a58-9bb3-5be882f20753",
+    "enabled": false
+  },
+  {
+    "name": "콘센트 소비전력 급감",
+    "scope": "device",
+    "deviceId": "*",
+    "metric": "watts",
+    "op": "below",
+    "value": 5,
+    "priority": "normal",
+    "note": "제습기 물통 만수, 냉장고 정지처럼 조용히 멈춘 상태.",
+    "id": "15d4875e-2080-4006-82fe-13f0fae7c611",
+    "enabled": false
   }
-}
+]

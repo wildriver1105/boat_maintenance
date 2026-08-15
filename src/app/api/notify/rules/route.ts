@@ -1,14 +1,16 @@
-// 알림 규칙 관리 — 관리자 전용.
-// GET  → 카탈로그 + 현재 설정(켜짐/임계값)
-// PUT  → { key, enabled?, params? } 부분 갱신
+// 알림 규칙 CRUD — 관리자 전용.
+// GET    → { rules, metrics } (지표 목록은 화면이 폼을 그리는 데 쓴다)
+// POST   → 규칙 생성 (항상 비활성으로 시작)
+// PUT    → 규칙 수정 { id, ... }
+// DELETE → ?id=…
 //
-// 규칙 자체를 추가·삭제하는 경로는 없다. 목록은 모니터가 구현한 것과 1:1 이어야
-// 하므로 코드가 소유한다 (src/lib/notifications/rules.ts).
+// 지표(metric)는 코드가 소유한다. 모니터가 실제로 읽을 수 있는 값이어야 하기
+// 때문이다 — 없는 지표를 고를 수 있으면 켜도 아무 일 없는 규칙이 만들어진다.
 
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { AUTH_DISABLED } from "@/lib/auth-mode";
-import { listRules, updateRule } from "@/lib/notifications/rules";
+import { addRule, deleteRule, listRules, METRICS, updateRule } from "@/lib/notifications/rules";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,33 +21,44 @@ async function requireAdmin() {
   return session?.user?.role === "admin";
 }
 
+const forbidden = () => NextResponse.json({ error: "forbidden" }, { status: 403 });
+
 export async function GET() {
-  if (!(await requireAdmin()))
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  return NextResponse.json(await listRules(), {
-    headers: { "Cache-Control": "no-store" },
-  });
+  if (!(await requireAdmin())) return forbidden();
+  return NextResponse.json(
+    { rules: await listRules(), metrics: METRICS },
+    { headers: { "Cache-Control": "no-store" } },
+  );
+}
+
+export async function POST(req: Request) {
+  if (!(await requireAdmin())) return forbidden();
+  const body = await req.json().catch(() => ({}));
+  try {
+    return NextResponse.json(await addRule(body), { status: 201 });
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 400 });
+  }
 }
 
 export async function PUT(req: Request) {
-  if (!(await requireAdmin()))
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!(await requireAdmin())) return forbidden();
+  const body = (await req.json().catch(() => ({}))) as { id?: string };
+  if (!body.id) return NextResponse.json({ error: "id 필수" }, { status: 400 });
+  try {
+    const rule = await updateRule(body.id, body);
+    if (!rule) return NextResponse.json({ error: "not found" }, { status: 404 });
+    return NextResponse.json(rule);
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 400 });
+  }
+}
 
-  const body = (await req.json().catch(() => ({}))) as {
-    key?: unknown;
-    enabled?: unknown;
-    params?: unknown;
-  };
-  if (typeof body.key !== "string")
-    return NextResponse.json({ error: "key 필수" }, { status: 400 });
-
-  const rule = await updateRule(body.key, {
-    enabled: typeof body.enabled === "boolean" ? body.enabled : undefined,
-    params:
-      body.params && typeof body.params === "object"
-        ? (body.params as Record<string, number>)
-        : undefined,
-  });
-  if (!rule) return NextResponse.json({ error: "알 수 없는 규칙입니다" }, { status: 404 });
-  return NextResponse.json(rule);
+export async function DELETE(req: Request) {
+  if (!(await requireAdmin())) return forbidden();
+  const id = new URL(req.url).searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "id 필수" }, { status: 400 });
+  const ok = await deleteRule(id);
+  if (!ok) return NextResponse.json({ error: "not found" }, { status: 404 });
+  return NextResponse.json({ ok: true });
 }
