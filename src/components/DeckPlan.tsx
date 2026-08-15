@@ -45,6 +45,8 @@ type Props = {
   layers: PlanLayersConfig;
   onSelect: (id: string | null) => void;
   onPlace: (pos: Pt) => void;
+  /** 마커 드래그 확정 — 평면은 position, 측면은 position.x + sideY */
+  onDeviceMove: (id: string, patch: { position?: Pt; sideY?: number }) => void;
   onShapeCreate: (shape: ShapeDraft) => void;
   onShapeMove: (id: string, patch: Partial<PlanShape>) => void;
   onShapeDelete: (id: string) => void;
@@ -72,6 +74,7 @@ export default function DeckPlan({
   layers,
   onSelect,
   onPlace,
+  onDeviceMove,
   onShapeCreate,
   onShapeMove,
   onShapeDelete,
@@ -88,6 +91,9 @@ export default function DeckPlan({
   const [pathPts, setPathPts] = useState<Pt[]>([]);
   const [drag, setDrag] = useState<{ id: string; last: Pt } | null>(null);
   const [dragOff, setDragOff] = useState<ShapeOffset>(null);
+  // 장비 마커 이동 (선택·이동 도구)
+  const [devDrag, setDevDrag] = useState<{ id: string; start: Pt } | null>(null);
+  const [devOff, setDevOff] = useState<{ id: string; dx: number; dy: number } | null>(null);
   // 측정 도구 (정규 좌표로 저장)
   const [measure, setMeasure] = useState<{ a: Pt; b: Pt } | null>(null);
   const [measuring, setMeasuring] = useState(false);
@@ -103,18 +109,21 @@ export default function DeckPlan({
   // 그룹 자식은 맵에서 숨김 — 부모(시스템) 마커만 표시
   const mapDevices = useMemo(() => visibleDevices(devices), [devices]);
 
-  // 현재 뷰에서의 디바이스 표시 좌표
+  // 현재 뷰에서의 디바이스 표시 좌표 (드래그 중인 마커는 오프셋을 미리 반영)
   const effectivePos = useMemo(() => {
     const map: Record<string, Pt> = {};
     for (const d of devices) {
+      // 오프셋은 정규 좌표계 기준이므로 먼저 더하고 나서 표시 좌표로 변환한다
+      const dx = devOff?.id === d.id ? devOff.dx : 0;
+      const dy = devOff?.id === d.id ? devOff.dy : 0;
       map[d.id] =
         view === "top"
-          ? d.position
-          : { x: flipX(d.position.x), y: d.sideY ?? SIDE_DEFAULT_Y };
+          ? { x: d.position.x + dx, y: d.position.y + dy }
+          : { x: flipX(d.position.x + dx), y: (d.sideY ?? SIDE_DEFAULT_Y) + dy };
     }
     return map;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [devices, view]);
+  }, [devices, view, devOff]);
 
   const labels = useMemo(
     () =>
@@ -165,6 +174,10 @@ export default function DeckPlan({
       setMeasure({ ...measure, b: p });
       return;
     }
+    if (devDrag) {
+      setDevOff({ id: devDrag.id, dx: p.x - devDrag.start.x, dy: p.y - devDrag.start.y });
+      return;
+    }
     if (drag) {
       setDragOff({ id: drag.id, dx: p.x - drag.last.x, dy: p.y - drag.last.y });
       return;
@@ -180,6 +193,25 @@ export default function DeckPlan({
   const handlePointerUp = () => {
     if (!editMode) return;
     if (measuring) setMeasuring(false); // 측정선은 유지 (다음 드래그/도구 변경 시 제거)
+
+    // 장비 마커 이동 확정 — 평면은 position, 측면은 x(공유) + sideY(수직)
+    if (devDrag && devOff && (devOff.dx !== 0 || devOff.dy !== 0)) {
+      const d = devices.find((x) => x.id === devDrag.id);
+      if (d) {
+        onDeviceMove(
+          d.id,
+          view === "top"
+            ? { position: { x: d.position.x + devOff.dx, y: d.position.y + devOff.dy } }
+            : {
+                position: { x: d.position.x + devOff.dx, y: d.position.y },
+                sideY: (d.sideY ?? SIDE_DEFAULT_Y) + devOff.dy,
+              },
+        );
+      }
+    }
+    setDevDrag(null);
+    setDevOff(null);
+
     // 도형 이동 확정
     if (drag && dragOff && (dragOff.dx !== 0 || dragOff.dy !== 0)) {
       const s = shapes.find((x) => x.id === drag.id);
@@ -227,6 +259,17 @@ export default function DeckPlan({
     } else {
       onSelect(null);
     }
+  };
+
+  /** 마커 잡기 — 선택·이동 도구에서만. 도형 드래그와 같은 규칙 */
+  const devicePointerDown = (id: string, e: React.PointerEvent) => {
+    if (!editMode || editTool !== "select") return;
+    const p = toCanonical(e.clientX, e.clientY);
+    if (!p) return;
+    e.stopPropagation();
+    onShapeSelect(null); // 도형 속성 패널과 동시에 뜨지 않게
+    setDevDrag({ id, start: p });
+    setDevOff(null);
   };
 
   const shapePointerDown = (id: string, e: React.PointerEvent) => {
@@ -404,7 +447,12 @@ export default function DeckPlan({
           </g>
         )}
 
-        <g id="devices" pointerEvents={editMode && editTool !== "device" ? "none" : undefined}>
+        <g
+          id="devices"
+          pointerEvents={
+            editMode && editTool !== "device" && editTool !== "select" ? "none" : undefined
+          }
+        >
           {mapDevices.map((d) => (
             <DeviceMarker
               key={d.id}
@@ -413,6 +461,8 @@ export default function DeckPlan({
               reading={groupReading(d, devices, readings)}
               selected={selectedId === d.id}
               onSelect={onSelect}
+              draggable={editMode && editTool === "select"}
+              onPointerDown={editMode && editTool === "select" ? devicePointerDown : undefined}
             />
           ))}
         </g>
@@ -429,7 +479,7 @@ export default function DeckPlan({
       {editMode && (
         <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-sky-600/90 px-4 py-1.5 text-sm font-medium text-white shadow">
           {editTool === "device" && `장비 배치 — 도면을 클릭하세요${view !== "top" ? " (측면 위치로 저장)" : ""}`}
-          {editTool === "select" && "선택·이동 — 도형을 클릭/드래그, 속성 패널에서 편집"}
+          {editTool === "select" && "선택·이동 — 장비 마커/도형을 끌어서 이동, 속성 패널에서 편집"}
           {editTool === "rect" && "사각형 — 드래그해서 그리기"}
           {editTool === "ellipse" && "원 — 중심에서 드래그"}
           {editTool === "line" && "선 — 드래그해서 그리기"}

@@ -11,9 +11,20 @@ type Props = {
   reading?: DeviceReading;
   selected: boolean;
   onSelect: (id: string) => void;
+  /** 편집(선택·이동) 모드에서 마커를 끌 수 있게 한다 */
+  onPointerDown?: (id: string, e: React.PointerEvent) => void;
+  draggable?: boolean;
 };
 
-export default function DeviceMarker({ device, pos, reading, selected, onSelect }: Props) {
+export default function DeviceMarker({
+  device,
+  pos,
+  reading,
+  selected,
+  onSelect,
+  onPointerDown,
+  draggable,
+}: Props) {
   const cat = CATEGORY_META[device.category];
   const status = reading?.status ?? "offline";
   const color = STATUS_META[status].color;
@@ -23,7 +34,8 @@ export default function DeviceMarker({ device, pos, reading, selected, onSelect 
   return (
     <g
       transform={`translate(${x} ${y})`}
-      className="cursor-pointer"
+      className={draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}
+      onPointerDown={onPointerDown ? (e) => onPointerDown(device.id, e) : undefined}
       onClick={(e) => {
         e.stopPropagation();
         onSelect(device.id);

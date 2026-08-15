@@ -159,6 +159,21 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
     }
   };
 
+  // 마커 드래그 확정 — 화면을 먼저 옮겨두고 저장한다.
+  // (서버 응답을 기다리면 손을 뗀 자리에서 원래 위치로 한 번 튕긴다)
+  const handleDeviceMove = async (
+    id: string,
+    patch: { position?: { x: number; y: number }; sideY?: number },
+  ) => {
+    setDevices((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
+    await fetch("/api/devices", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...patch }),
+    });
+    await refresh();
+  };
+
   const handleSave = async (d: DraftDevice) => {
     if (d.id) {
       await fetch("/api/devices", {
@@ -250,6 +265,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
             layers={layers}
             onSelect={handleSelect}
             onPlace={handlePlace}
+            onDeviceMove={handleDeviceMove}
             onShapeCreate={createShape}
             onShapeMove={updateShape}
             onShapeDelete={removeShape}
