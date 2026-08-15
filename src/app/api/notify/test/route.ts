@@ -1,5 +1,6 @@
 // 알림 상태 조회 / 테스트 발송 — 관리자 전용.
 import { NextResponse } from "next/server";
+import { listRules } from "@/lib/notifications/rules";
 import { auth } from "@/auth";
 import { AUTH_DISABLED } from "@/lib/auth-mode";
 import { getChannel } from "@/lib/notifications";
@@ -24,7 +25,9 @@ export async function GET() {
     configured: channel.configured,
     recipientCount: (await enabledUserKeys()).length,
     monitor: process.env.ALERT_MONITOR === "on",
-    monitorLevel: process.env.ALERT_MONITOR_LEVEL ?? "alert",
+    // 무엇을 보낼지는 규칙이 정한다 — 모니터가 켜져 있어도 규칙이 다 꺼져 있으면
+    // 아무것도 발송되지 않으므로, 그 숫자를 함께 보여준다.
+    rulesEnabled: (await listRules()).filter((r) => r.enabled).length,
   });
 }
 

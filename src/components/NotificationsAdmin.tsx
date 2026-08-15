@@ -8,12 +8,40 @@ type Status = {
   configured: boolean;
   recipientCount: number;
   monitor: boolean;
-  monitorLevel: string;
+  rulesEnabled: number;
 };
 
 type SendResult = { ok: boolean; status: number; detail?: string };
 
 type Recipient = { id: string; label: string; keyMasked: string; enabled: boolean };
+
+type RuleParam = {
+  key: string;
+  label: string;
+  unit: string;
+  min: number;
+  max: number;
+  step: number;
+  default: number;
+};
+
+type Rule = {
+  key: string;
+  group: string;
+  label: string;
+  description: string;
+  why?: string;
+  priority: "normal" | "high" | "emergency";
+  params?: RuleParam[];
+  enabled: boolean;
+  values: Record<string, number>;
+};
+
+const PRIORITY_META: Record<Rule["priority"], { label: string; cls: string }> = {
+  emergency: { label: "긴급 · 반복", cls: "bg-red-50 text-red-700" },
+  high: { label: "높음 · 소리", cls: "bg-amber-50 text-amber-700" },
+  normal: { label: "보통", cls: "bg-slate-100 text-slate-600" },
+};
 
 export default function NotificationsAdmin() {
   const [status, setStatus] = useState<Status | null>(null);
@@ -22,6 +50,9 @@ export default function NotificationsAdmin() {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<SendResult | null>(null);
   const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [rules, setRules] = useState<Rule[]>([]);
+  // 임계값 슬라이더는 드래그 중 서버 값에 밀리지 않도록 로컬 값을 우선한다
+  const [paramDraft, setParamDraft] = useState<Record<string, number>>({});
   const [newLabel, setNewLabel] = useState("");
   const [newKey, setNewKey] = useState("");
   const [addErr, setAddErr] = useState<string | null>(null);
@@ -32,13 +63,37 @@ export default function NotificationsAdmin() {
   const [testTargets, setTestTargets] = useState<string[] | null>(null);
 
   const load = useCallback(async () => {
-    const [s, rec] = await Promise.all([
+    const [s, rec, rl] = await Promise.all([
       fetch("/api/notify/test"),
       fetch("/api/notify/recipients"),
+      fetch("/api/notify/rules"),
     ]);
     if (s.ok) setStatus(await s.json());
     if (rec.ok) setRecipients(await rec.json());
+    if (rl.ok) setRules(await rl.json());
   }, []);
+
+  const patchRule = async (key: string, patch: { enabled?: boolean; params?: Record<string, number> }) => {
+    // 화면을 먼저 바꾸고 저장한다 — 토글이 한 박자 늦게 움직이면 눌렸는지 헷갈린다.
+    // patch.params 는 임계"값"이므로 카탈로그 정의(r.params)가 아니라 r.values 에 얹는다.
+    setRules((rs) =>
+      rs.map((r) =>
+        r.key === key
+          ? {
+              ...r,
+              enabled: patch.enabled ?? r.enabled,
+              values: patch.params ? { ...r.values, ...patch.params } : r.values,
+            }
+          : r,
+      ),
+    );
+    await fetch("/api/notify/rules", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, ...patch }),
+    });
+    await load();
+  };
   useEffect(() => {
     void load();
   }, [load]);
@@ -138,11 +193,13 @@ export default function NotificationsAdmin() {
           />
           <Row k="수신자" v={status ? `${status.recipientCount}명` : "…"} />
           <Row
-            k="자동 경고 알림"
+            k="자동 알림 모니터"
             v={
               status
                 ? status.monitor
-                  ? `켜짐 (${status.monitorLevel} 이상)`
+                  ? status.rulesEnabled > 0
+                    ? `켜짐 · 규칙 ${status.rulesEnabled}개 활성`
+                    : "켜짐 · 활성 규칙 없음 (발송 안 됨)"
                   : "꺼짐 (ALERT_MONITOR=on 으로 활성)"
                 : "…"
             }
@@ -154,6 +211,115 @@ export default function NotificationsAdmin() {
             <code>PUSHOVER_USER_KEY</code> 를 넣고 서버를 재시작하세요.
           </p>
         )}
+      </div>
+
+      {/* 알림 규칙 — 무엇을 보낼 것인가 */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-sm font-semibold text-slate-700">알림 규칙</h2>
+          <span className="text-xs text-slate-400">
+            {rules.filter((r) => r.enabled).length} / {rules.length} 활성
+          </span>
+        </div>
+        <p className="mt-0.5 text-xs text-slate-400">
+          켠 규칙만 푸시로 발송됩니다. 조건이 <b>바뀌는 순간</b>에만 1회 보내며, 상태가
+          유지되는 동안 반복하지 않습니다.
+        </p>
+
+        {rules.filter((r) => r.enabled).length === 0 && (
+          <p className="mt-3 rounded-lg bg-slate-50 p-2.5 text-xs text-slate-500">
+            지금은 모든 규칙이 꺼져 있어 <b>어떤 알림도 발송되지 않습니다</b>.
+          </p>
+        )}
+
+        {[...new Set(rules.map((r) => r.group))].map((group) => (
+          <div key={group} className="mt-4">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              {group}
+            </h3>
+            <ul className="mt-1.5 divide-y divide-slate-100">
+              {rules
+                .filter((r) => r.group === group)
+                .map((r) => (
+                  <li key={r.key} className="py-2.5">
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={r.enabled}
+                        onChange={(e) => void patchRule(r.key, { enabled: e.target.checked })}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-sky-600"
+                        aria-label={r.label}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={`text-sm font-medium ${
+                              r.enabled ? "text-slate-800" : "text-slate-500"
+                            }`}
+                          >
+                            {r.label}
+                          </span>
+                          <span
+                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                              PRIORITY_META[r.priority].cls
+                            }`}
+                          >
+                            {PRIORITY_META[r.priority].label}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-xs text-slate-500">{r.description}</p>
+                        {r.why && <p className="mt-0.5 text-[11px] text-slate-400">{r.why}</p>}
+
+                        {/* 임계값 — 규칙을 켰을 때만 조정할 수 있게 한다 */}
+                        {r.params?.map((p) => {
+                          const draftKey = `${r.key}.${p.key}`;
+                          const value = paramDraft[draftKey] ?? r.values[p.key];
+                          return (
+                            <div key={p.key} className="mt-2 max-w-xs">
+                              <div className="flex items-baseline justify-between">
+                                <label
+                                  htmlFor={draftKey}
+                                  className="text-[11px] text-slate-500"
+                                >
+                                  {p.label}
+                                </label>
+                                <span className="text-[11px] font-medium tabular-nums text-slate-600">
+                                  {value} {p.unit}
+                                </span>
+                              </div>
+                              <input
+                                id={draftKey}
+                                type="range"
+                                min={p.min}
+                                max={p.max}
+                                step={p.step}
+                                value={value}
+                                disabled={!r.enabled}
+                                onChange={(e) =>
+                                  setParamDraft((d) => ({ ...d, [draftKey]: Number(e.target.value) }))
+                                }
+                                onPointerUp={(e) =>
+                                  void patchRule(r.key, {
+                                    params: { [p.key]: Number((e.target as HTMLInputElement).value) },
+                                  })
+                                }
+                                onKeyUp={(e) =>
+                                  void patchRule(r.key, {
+                                    params: { [p.key]: Number((e.target as HTMLInputElement).value) },
+                                  })
+                                }
+                                className="mt-1 w-full accent-sky-600 disabled:opacity-40"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        ))}
       </div>
 
       {/* 수신자 관리 */}

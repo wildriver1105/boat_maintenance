@@ -52,4 +52,22 @@ if [ -z "${IP:-}" ]; then
 fi
 
 echo "[mdns] ${NAME}.local → ${IP}:${PORT} 광고 시작"
-exec /usr/bin/dns-sd -P "$NAME" _http._tcp local "$PORT" "${NAME}.local" "$IP"
+
+# ⚠ exec 로 붙박이면 안 된다 — 망이 바뀌어도(선박 LAN→핫스팟) dns-sd 는 안 죽고
+#   **옛 IP 를 계속 광고**한다(실측 2026-08-15: 접속 불가 원인). 백그라운드로 띄우고
+#   30초마다 IP 를 재확인해, 바뀌었으면 종료 → KeepAlive 가 새 IP 로 다시 광고한다.
+/usr/bin/dns-sd -P "$NAME" _http._tcp local "$PORT" "${NAME}.local" "$IP" &
+DNSSD_PID=$!
+trap 'kill "$DNSSD_PID" 2>/dev/null' EXIT
+
+while sleep 30; do
+  if ! kill -0 "$DNSSD_PID" 2>/dev/null; then
+    echo "[mdns] dns-sd 가 죽었습니다 — 재시작" >&2
+    exit 1
+  fi
+  NOW="$(find_ip || true)"
+  if [ -n "${NOW:-}" ] && [ "$NOW" != "$IP" ]; then
+    echo "[mdns] IP 변경 감지 ${IP} → ${NOW} — 재등록" >&2
+    exit 1
+  fi
+done

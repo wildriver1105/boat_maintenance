@@ -1,0 +1,8 @@
+{
+  "plug-power-rise": {
+    "enabled": false,
+    "params": {
+      "watts": 50
+    }
+  }
+}
