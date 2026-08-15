@@ -686,5 +686,62 @@
       "lighting": true
     },
     "notes": "ESP32 + HW-517 PWM 디머 (USB 시리얼, d 0~100). 펌웨어: ~/Desktop/lighting"
+  },
+  {
+    "id": "dev-plug-1",
+    "name": "스마트 플러그 1",
+    "category": "outlet",
+    "position": {
+      "x": 700,
+      "y": 540
+    },
+    "sideY": 560,
+    "sensorId": "plug-1",
+    "enabled": true,
+    "config": {
+      "zigbee": {
+        "id": "0x4ce175b575300000",
+        "model": "3RSP02064Z"
+      }
+    },
+    "notes": "Third Reality Smart Plug Gen3 (Zigbee). 위치·이름은 실제 콘센트에 맞게 수정 필요."
+  },
+  {
+    "id": "dev-plug-2",
+    "name": "스마트 플러그 2",
+    "category": "outlet",
+    "position": {
+      "x": 980,
+      "y": 600
+    },
+    "sideY": 560,
+    "sensorId": "plug-2",
+    "enabled": true,
+    "config": {
+      "zigbee": {
+        "id": "0x4ce175b541a10000",
+        "model": "3RSP02064Z"
+      }
+    },
+    "notes": "Third Reality Smart Plug Gen3 (Zigbee). 위치·이름은 실제 콘센트에 맞게 수정 필요."
+  },
+  {
+    "id": "dev-plug-3",
+    "name": "스마트 플러그 3",
+    "category": "outlet",
+    "position": {
+      "x": 1300,
+      "y": 600
+    },
+    "sideY": 560,
+    "sensorId": "plug-3",
+    "enabled": true,
+    "config": {
+      "zigbee": {
+        "id": "0x4ce175b54a4e0000",
+        "model": "3RSP02064Z"
+      }
+    },
+    "notes": "Third Reality Smart Plug Gen3 (Zigbee). 위치·이름은 실제 콘센트에 맞게 수정 필요."
   }
 ]

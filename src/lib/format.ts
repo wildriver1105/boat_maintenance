@@ -3,6 +3,14 @@ import type { Device, DeviceReading } from "@/lib/types";
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
+/** Zigbee 플러그의 power_on_behavior 값 */
+const POWER_ON_BEHAVIOR: Record<string, string> = {
+  off: "꺼짐 유지",
+  on: "켜짐",
+  toggle: "반전",
+  previous: "이전 상태 복원",
+};
+
 /** 마커/리스트에 붙일 짧은 한 줄 요약 */
 export function summarize(device: Device, r?: DeviceReading): string {
   // 그룹(시스템) 집계 리딩
@@ -43,6 +51,12 @@ export function summarize(device: Device, r?: DeviceReading): string {
     case "lighting":
       if (typeof v.duty !== "number") return "미수신";
       return v.duty > 0 ? `밝기 ${v.duty}%` : "꺼짐";
+    case "outlet": {
+      if (typeof v.on !== "boolean") return "미수신";
+      if (!v.on) return "꺼짐";
+      // 켜져 있으면 지금 얼마나 쓰는지가 제일 궁금한 값이다
+      return typeof v.watts === "number" ? `켜짐 · ${Math.round(v.watts)}W` : "켜짐";
+    }
     default:
       return typeof v.value === "number" ? String(v.value) : "—";
   }
@@ -108,6 +122,18 @@ export function detailRows(device: Device, r?: DeviceReading): [string, string][
         rows.push(["상태", v.duty > 0 ? "켜짐" : "꺼짐"]);
         rows.push(["밝기", `${v.duty}%`]);
       }
+      break;
+    case "outlet":
+      if (typeof v.on === "boolean") rows.push(["상태", v.on ? "켜짐" : "꺼짐"]);
+      if (typeof v.watts === "number") rows.push(["소비전력", `${v.watts} W`]);
+      if (typeof v.volts === "number") rows.push(["전압", `${v.volts} V`]);
+      if (typeof v.amps === "number") rows.push(["전류", `${v.amps} A`]);
+      if (typeof v.powerFactor === "number") rows.push(["역률", String(v.powerFactor)]);
+      if (typeof v.hz === "number") rows.push(["주파수", `${v.hz} Hz`]);
+      if (typeof v.kwh === "number") rows.push(["누적 사용량", `${v.kwh} kWh`]);
+      if (typeof v.powerOnBehavior === "string")
+        rows.push(["정전 복구 시", POWER_ON_BEHAVIOR[v.powerOnBehavior] ?? v.powerOnBehavior]);
+      if (typeof v.lqi === "number") rows.push(["Zigbee 링크", `${v.lqi} / 255`]);
       break;
     default:
       Object.entries(v).forEach(([k, val]) => rows.push([k, String(val)]));

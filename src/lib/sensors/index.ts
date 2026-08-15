@@ -13,20 +13,26 @@ import type { Device, DeviceReading } from "@/lib/types";
 import type { SensorSource } from "./types";
 import { VictronSensorSource } from "./victron";
 import { LightingSensorSource, isLightingDevice } from "./lighting";
+import { ZigbeeSensorSource, isZigbeeDevice } from "./zigbee";
 import { bindingOf } from "@/lib/victron/binding";
 
-/** 실측 소스 합성: Victron(MQTT) + 조명 ESP32(시리얼). 가짜 값은 만들지 않는다. */
+/**
+ * 실측 소스 합성: Victron(Venus MQTT) + 조명 ESP32(TCP) + Zigbee(z2m MQTT).
+ * 가짜 값은 만들지 않는다.
+ */
 class CompositeSensorSource implements SensorSource {
-  readonly name = "victron+esp32";
+  readonly name = "victron+esp32+zigbee";
   private victron = new VictronSensorSource();
   private lighting = new LightingSensorSource();
+  private zigbee = new ZigbeeSensorSource();
 
   async getReadings(devices: Device[]): Promise<DeviceReading[]> {
-    const [a, b] = await Promise.all([
+    const [a, b, c] = await Promise.all([
       this.victron.getReadings(devices.filter((d) => bindingOf(d))),
       this.lighting.getReadings(devices.filter((d) => isLightingDevice(d))),
+      this.zigbee.getReadings(devices.filter((d) => isZigbeeDevice(d))),
     ]);
-    return [...a, ...b];
+    return [...a, ...b, ...c];
   }
 }
 

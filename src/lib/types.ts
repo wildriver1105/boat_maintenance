@@ -14,6 +14,7 @@ export type DeviceCategory =
   | "bilge" // 빌지/펌프
   | "seacock" // 시콕크 (through-hull 밸브)
   | "lighting" // 조명 (디머 포함)
+  | "outlet" // AC 콘센트 (스마트플러그 — 개별 부하 계측)
   | "other"; // 기타
 
 export type DeviceStatus = "ok" | "warning" | "alert" | "offline";
@@ -75,6 +76,7 @@ export const CATEGORY_META: Record<
   bilge: { label: "빌지/펌프", short: "BILGE", icon: "🌊", accent: "#14b8a6" },
   seacock: { label: "시콕크", short: "COCK", icon: "🔧", accent: "#8b5cf6" },
   lighting: { label: "조명", short: "LIGHT", icon: "💡", accent: "#f59e0b" },
+  outlet: { label: "콘센트", short: "PLUG", icon: "🔌", accent: "#84cc16" },
   other: { label: "기타", short: "MISC", icon: "📦", accent: "#64748b" },
 };
 
