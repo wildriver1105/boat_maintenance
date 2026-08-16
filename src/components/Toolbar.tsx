@@ -1,7 +1,10 @@
 // 상단 툴바 — 경계선 없이 도면 위에 떠 있는 반투명 오버레이(키오스크 스타일).
+//
+// 도면이 주인공이므로 툴바는 접힌다. 접으면 햄버거 버튼과 뷰 전환만 남고,
+// 나머지 컨트롤은 사라진다 — 배에서는 대개 도면만 띄워 두고 보기 때문이다.
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { DeckView } from "@/lib/types";
 
 const VIEWS: { key: DeckView; label: string }[] = [
@@ -23,9 +26,6 @@ type Props = {
   onOpenElectrical: () => void;
   onOpenEngine: () => void;
   onOpenMetrics: () => void;
-  connected: boolean;
-  source: string | null;
-  deviceCount: number;
   right?: ReactNode;
 };
 
@@ -41,34 +41,39 @@ export default function Toolbar({
   onOpenElectrical,
   onOpenEngine,
   onOpenMetrics,
-  connected,
-  source,
-  deviceCount,
   right,
 }: Props) {
+  const [open, setOpen] = useState(true);
+
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 p-3">
-      {/* 좌측: 타이틀 (도면 위에 떠 있음) */}
+      {/* 좌측: 햄버거 + 뷰 전환 */}
       <div className="pointer-events-auto flex items-center gap-3">
-        <div className="rounded-2xl bg-white/70 px-4 py-2 shadow-lg ring-1 ring-black/5 backdrop-blur-md">
-          <h1 className="text-base font-semibold text-slate-800">
-            ⛵ Oceanis Clipper 473
-          </h1>
-          <p className="text-[11px] text-slate-500">
-            부품 {deviceCount}개 · {view === "3d" ? "3D 뷰" : "2D 도면"}
-          </p>
-        </div>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          aria-label={open ? "메뉴 접기" : "메뉴 펼치기"}
+          aria-expanded={open}
+          className={`flex h-11 w-11 items-center justify-center rounded-2xl shadow-lg ring-1 ring-black/5 backdrop-blur-md transition-colors ${
+            open ? "bg-white/70 text-slate-700" : "bg-white/70 text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          {/* 접힘 상태를 아이콘으로도 알린다 (햄버거 ↔ 닫기) */}
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+            {open ? (
+              <path d="M4 4 L14 14 M14 4 L4 14" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+            ) : (
+              <path d="M2.5 4.5h13M2.5 9h13M2.5 13.5h13" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+            )}
+          </svg>
+        </button>
 
-        {/* 뷰 전환 (평면/좌현/우현) */}
         <div className="flex items-center gap-1 rounded-2xl bg-white/70 p-1.5 shadow-lg ring-1 ring-black/5 backdrop-blur-md">
           {VIEWS.map((v) => (
             <button
               key={v.key}
               onClick={() => onViewChange(v.key)}
               className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                view === v.key
-                  ? "bg-sky-600 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
+                view === v.key ? "bg-sky-600 text-white" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
               {v.label}
@@ -77,76 +82,65 @@ export default function Toolbar({
         </div>
       </div>
 
-      {/* 우측: 컨트롤 그룹 */}
-      <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl bg-white/70 p-1.5 shadow-lg ring-1 ring-black/5 backdrop-blur-md">
-        <span className="inline-flex items-center gap-1.5 px-2 text-xs text-slate-500">
-          <span
-            className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-slate-300"}`}
-          />
-          {connected ? source ?? "" : "대기"}
-        </span>
+      {/* 우측: 컨트롤 그룹 — 접으면 통째로 감춘다 */}
+      {open && (
+        <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl bg-white/70 p-1.5 shadow-lg ring-1 ring-black/5 backdrop-blur-md">
+          <button
+            onClick={onOpenElectrical}
+            className="rounded-xl px-3 py-2 text-sm font-medium text-amber-600 transition-colors hover:bg-amber-50"
+          >
+            ⚡ 전기
+          </button>
 
-        <button
-          onClick={onOpenElectrical}
-          className="rounded-xl px-3 py-2 text-sm font-medium text-amber-600 transition-colors hover:bg-amber-50"
-        >
-          ⚡ 전기
-        </button>
+          <button
+            onClick={onOpenEngine}
+            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
+          >
+            ⚙️ 엔진
+          </button>
 
-        <button
-          onClick={onOpenEngine}
-          className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
-        >
-          ⚙️ 엔진
-        </button>
+          <button
+            onClick={onOpenMetrics}
+            className="rounded-xl px-3 py-2 text-sm font-medium text-sky-600 transition-colors hover:bg-sky-50"
+          >
+            📈 추이
+          </button>
 
-        <button
-          onClick={onOpenMetrics}
-          className="rounded-xl px-3 py-2 text-sm font-medium text-sky-600 transition-colors hover:bg-sky-50"
-        >
-          📈 추이
-        </button>
+          {view !== "3d" && (
+            <>
+              <button
+                onClick={onToggleLabels}
+                className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                  showLabels ? "bg-sky-100 text-sky-700" : "text-slate-500 hover:bg-slate-100"
+                }`}
+              >
+                라벨
+              </button>
 
-        {view !== "3d" && (
-          <>
-            <button
-              onClick={onToggleLabels}
-              className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                showLabels
-                  ? "bg-sky-100 text-sky-700"
-                  : "text-slate-500 hover:bg-slate-100"
-              }`}
-            >
-              라벨
-            </button>
+              <button
+                onClick={onToggleEdit}
+                className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                  editMode ? "bg-sky-600 text-white hover:bg-sky-700" : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {editMode ? "편집 종료" : "편집"}
+              </button>
+            </>
+          )}
 
-            <button
-              onClick={onToggleEdit}
-              className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                editMode
-                  ? "bg-sky-600 text-white hover:bg-sky-700"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              {editMode ? "편집 종료" : "편집"}
-            </button>
-          </>
-        )}
+          <button
+            onClick={onTogglePanel}
+            aria-label="패널 열기/닫기"
+            className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+              panelOpen ? "bg-slate-100 text-slate-700" : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            패널 {panelOpen ? "›" : "‹"}
+          </button>
 
-        <button
-          onClick={onTogglePanel}
-          aria-label="패널 열기/닫기"
-          className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-            panelOpen
-              ? "bg-slate-100 text-slate-700"
-              : "text-slate-600 hover:bg-slate-100"
-          }`}
-        >
-          패널 {panelOpen ? "›" : "‹"}
-        </button>
-
-        {right}
-      </div>
+          {right}
+        </div>
+      )}
     </div>
   );
 }

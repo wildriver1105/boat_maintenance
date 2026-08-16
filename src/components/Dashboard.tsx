@@ -326,9 +326,6 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
         onOpenElectrical={() => setElectricalOpen(true)}
         onOpenEngine={() => setEngineOpen(true)}
         onOpenMetrics={() => setMetricsOpen(true)}
-        connected={connected}
-        source={source}
-        deviceCount={devices.length}
         right={rightSlot}
       />
 

@@ -422,19 +422,19 @@ export default function DeckPlan({
                     stroke={selected ? "#0ea5e9" : cat.accent}
                     strokeWidth={selected ? 2 : 1.2} opacity={selected ? 1 : 0.65} />
                   <circle cx={a.x} cy={a.y} r={3.5} fill={cat.accent} />
-                  <text x={a.x} y={a.y > 425 ? a.y + 20 : a.y - 16} textAnchor="middle"
-                    fontSize={19} fontWeight={600} fill={selected ? "#0284c7" : "#1e293b"}
-                    stroke="#ffffff" strokeWidth={4} paintOrder="stroke" style={{ userSelect: "none" }}>
+                  <text x={a.x} y={a.y > 425 ? a.y + 16 : a.y - 13} textAnchor="middle"
+                    fontSize={14} fontWeight={600} fill={selected ? "#0284c7" : "#1e293b"}
+                    stroke="#ffffff" strokeWidth={3} paintOrder="stroke" style={{ userSelect: "none" }}>
                     {d.name}
                   </text>
                   <text
                     x={a.x}
-                    y={a.y > 425 ? a.y + 40 : a.y + 4}
+                    y={a.y > 425 ? a.y + 31 : a.y + 2}
                     textAnchor="middle"
-                    fontSize={15}
+                    fontSize={11}
                     fill={STATUS_META[status].color}
                     stroke="#ffffff"
-                    strokeWidth={3.5}
+                    strokeWidth={2.5}
                     paintOrder="stroke"
                     style={{ userSelect: "none" }}
                   >
