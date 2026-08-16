@@ -14,6 +14,7 @@ import type { SensorSource } from "./types";
 import { VictronSensorSource } from "./victron";
 import { LightingSensorSource, isLightingDevice } from "./lighting";
 import { ZigbeeSensorSource, isZigbeeDevice } from "./zigbee";
+import { SeatalkSensorSource, isSeatalkDevice } from "./seatalk";
 import { bindingOf } from "@/lib/victron/binding";
 
 /**
@@ -21,18 +22,20 @@ import { bindingOf } from "@/lib/victron/binding";
  * 가짜 값은 만들지 않는다.
  */
 class CompositeSensorSource implements SensorSource {
-  readonly name = "victron+esp32+zigbee";
+  readonly name = "victron+esp32+zigbee+seatalk";
   private victron = new VictronSensorSource();
   private lighting = new LightingSensorSource();
   private zigbee = new ZigbeeSensorSource();
+  private seatalk = new SeatalkSensorSource();
 
   async getReadings(devices: Device[]): Promise<DeviceReading[]> {
-    const [a, b, c] = await Promise.all([
-      this.victron.getReadings(devices.filter((d) => bindingOf(d))),
-      this.lighting.getReadings(devices.filter((d) => isLightingDevice(d))),
-      this.zigbee.getReadings(devices.filter((d) => isZigbeeDevice(d))),
+    const [a, b, c, d] = await Promise.all([
+      this.victron.getReadings(devices.filter((x) => bindingOf(x))),
+      this.lighting.getReadings(devices.filter((x) => isLightingDevice(x))),
+      this.zigbee.getReadings(devices.filter((x) => isZigbeeDevice(x))),
+      this.seatalk.getReadings(devices.filter((x) => isSeatalkDevice(x))),
     ]);
-    return [...a, ...b, ...c];
+    return [...a, ...b, ...c, ...d];
   }
 }
 

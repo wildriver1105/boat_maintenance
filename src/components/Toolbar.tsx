@@ -26,6 +26,7 @@ type Props = {
   onOpenElectrical: () => void;
   onOpenEngine: () => void;
   onOpenMetrics: () => void;
+  onOpenNav: () => void;
   right?: ReactNode;
 };
 
@@ -41,6 +42,7 @@ export default function Toolbar({
   onOpenElectrical,
   onOpenEngine,
   onOpenMetrics,
+  onOpenNav,
   right,
 }: Props) {
   const [open, setOpen] = useState(true);
@@ -80,6 +82,13 @@ export default function Toolbar({
             className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
           >
             ⚙️ 엔진
+          </button>
+
+          <button
+            onClick={onOpenNav}
+            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
+          >
+            🧭 항해
           </button>
 
           <button

@@ -25,6 +25,7 @@ import DevicePlacementForm, { type DraftDevice } from "./DevicePlacementForm";
 import VictronPanel from "./VictronPanel";
 import EnginePanel from "./EnginePanel";
 import MetricsPanel from "./MetricsPanel";
+import SeatalkPanel from "./SeatalkPanel";
 import {
   CATEGORY_META,
   STATUS_META,
@@ -54,6 +55,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
   const [electricalOpen, setElectricalOpen] = useState(false);
   const [engineOpen, setEngineOpen] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const [pendingOpen, setPendingOpen] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -326,6 +328,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
         onOpenElectrical={() => setElectricalOpen(true)}
         onOpenEngine={() => setEngineOpen(true)}
         onOpenMetrics={() => setMetricsOpen(true)}
+        onOpenNav={() => setNavOpen(true)}
         right={rightSlot}
       />
 
@@ -465,6 +468,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
       {electricalOpen && <VictronPanel onClose={() => setElectricalOpen(false)} />}
       {engineOpen && <EnginePanel onClose={() => setEngineOpen(false)} />}
       {metricsOpen && <MetricsPanel devices={devices} onClose={() => setMetricsOpen(false)} />}
+      {navOpen && <SeatalkPanel onClose={() => setNavOpen(false)} />}
 
       {draft && (
         <DevicePlacementForm

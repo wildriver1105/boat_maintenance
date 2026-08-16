@@ -761,5 +761,56 @@
       }
     },
     "notes": "Third Reality Smart Plug Gen3 (Zigbee). 위치·이름은 실제 콘센트에 맞게 수정 필요."
+  },
+  {
+    "id": "dev-n2k-ar200",
+    "name": "AR200 방위·자세 센서",
+    "category": "navigation",
+    "position": {
+      "x": 215,
+      "y": 497
+    },
+    "sideY": 330,
+    "sensorId": "nav-ar200",
+    "config": {
+      "seatalk": {
+        "src": 201
+      }
+    },
+    "notes": "SeaTalkng 백본 · 선수방위/자세/선회율 송신 (src 201). EV-1 미설치 상태에서 방위를 공급"
+  },
+  {
+    "id": "dev-n2k-gps",
+    "name": "GPS 수신기",
+    "category": "navigation",
+    "position": {
+      "x": 277,
+      "y": 404
+    },
+    "sideY": 300,
+    "sensorId": "nav-gps",
+    "config": {
+      "seatalk": {
+        "src": 205
+      }
+    },
+    "notes": "SeaTalkng 백본 · 위치/COG·SOG/GNSS/위성/시각 송신 (src 205)"
+  },
+  {
+    "id": "dev-n2k-itc5",
+    "name": "ITC-5 트랜스듀서 허브",
+    "category": "navigation",
+    "position": {
+      "x": 1009,
+      "y": 239
+    },
+    "sideY": 360,
+    "sensorId": "nav-itc5",
+    "config": {
+      "seatalk": {
+        "src": 105
+      }
+    },
+    "notes": "SeaTalkng 백본 · 풍향풍속/대수속력/항적거리/수온 송신 (src 105). 속도계 패들휠 미연결 — stw 0.00 고정"
   }
 ]
