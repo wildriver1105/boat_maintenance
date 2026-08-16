@@ -230,12 +230,30 @@
     "enabled": false
   },
   {
-    "id": "dev-panasonic-leadacid",
-    "name": "Panasonic 납산 배터리 (1~4)",
+    "id": "dev-house-bank",
+    "name": "Renogy 리튬 배터리 (1~4)",
     "category": "electrical",
     "position": {
       "x": 525,
       "y": 505
+    },
+    "sideY": 515,
+    "sensorId": "batt-house",
+    "config": {
+      "victron": {
+        "path": "battery/0",
+        "gxName": "Lynx Shunt (하우스 뱅크 공통 계측)"
+      }
+    },
+    "notes": "하우스 리튬(LiFePO4) 12V 300Ah ×4 = 1,200Ah. Lynx Shunt 가 뱅크 합계를 계측한다"
+  },
+  {
+    "id": "dev-panasonic-leadacid",
+    "name": "Panasonic 납산 배터리 (1~4)",
+    "category": "electrical",
+    "position": {
+      "x": 550,
+      "y": 432
     },
     "sideY": 515,
     "sensorId": "batt-engine",
@@ -248,7 +266,7 @@
         "gxName": "Engine Bat Shunt (엔진 뱅크 계측)"
       }
     },
-    "notes": "엔진 시동 및 보조용 납산 배터리 12V 75Ah ×4"
+    "notes": "엔진 시동 및 보조용 납산 배터리 12V 75Ah ×4 — 엔진룸 배치"
   },
   {
     "id": "dev-isotrans-port",
@@ -587,7 +605,7 @@
     "id": "dev-renogy-1",
     "name": "Renogy 리튬 배터리 1",
     "category": "electrical",
-    "parentId": "dev-victron-system",
+    "parentId": "dev-house-bank",
     "position": {
       "x": 290,
       "y": 648
@@ -609,7 +627,7 @@
     "id": "dev-renogy-2",
     "name": "Renogy 리튬 배터리 2",
     "category": "electrical",
-    "parentId": "dev-victron-system",
+    "parentId": "dev-house-bank",
     "position": {
       "x": 330,
       "y": 648
@@ -631,7 +649,7 @@
     "id": "dev-renogy-3",
     "name": "Renogy 리튬 배터리 3",
     "category": "electrical",
-    "parentId": "dev-victron-system",
+    "parentId": "dev-house-bank",
     "position": {
       "x": 370,
       "y": 648
@@ -653,7 +671,7 @@
     "id": "dev-renogy-4",
     "name": "Renogy 리튬 배터리 4",
     "category": "electrical",
-    "parentId": "dev-victron-system",
+    "parentId": "dev-house-bank",
     "position": {
       "x": 410,
       "y": 648
