@@ -1,7 +1,15 @@
 // SeaTalkng / NMEA2000 게이트웨이 브리지 (서버 전용 싱글턴).
 //
-// ~/Desktop/seatalk 의 ESP32 게이트웨이가 CAN 버스를 listen-only 로 받아
-// seatalk.local:2000 으로 JSON 을 한 줄씩 밀어준다:
+// ESP32 게이트웨이(~/Desktop/seatalk)가 CAN 버스를 listen-only 로 받아 JSON 을
+// 한 줄씩 내보낸다. 그 줄을 **nav 브리지에서 중계받는다**:
+//
+//   ESP32 ──USB 시리얼──▶ nav 브리지(포트 독점) ──SSE /ap/stream──▶ 이 앱
+//
+// 직접 붙지 않는 이유: 게이트웨이가 USB 로 전환되면서 tty 는 한 프로세스만
+// 열 수 있게 됐다. 둘이 같이 열면 바이트를 나눠 갖고 양쪽 다 깨진다. 중계를
+// 거치면 USB 든 WiFi 든 전송 방식이 바뀌어도 이 앱은 영향을 받지 않는다.
+//
+// 줄 형식은 게이트웨이 원본 그대로다:
 //
 //   {"pgn":127250,"src":201,"type":"heading","heading_deg":279.4,"ref":"Magnetic"}
 //   {"type":"canhealth","state":"running","rxFrames":41229,"rxMissed":12,...}
@@ -15,12 +23,10 @@
 // 있었고, 원인은 계기 쪽 통신이 꺼져 있던 것이었다. 그래서 소켓 연결(connected),
 // 게이트웨이 보고(canhealth), 프레임 증가(busActive)를 따로 본다.
 
-import net from "net";
-import dns from "dns";
-
-const DEFAULT_HOST = "seatalk.local";
-const DEFAULT_PORT = 2000;
+const DEFAULT_RELAY = "http://127.0.0.1:8002/ap/stream";
 const RECONNECT_MS = 5000;
+/** 중계에서 이 시간 동안 아무 줄도 안 오면 끊긴 것으로 본다 */
+const RELAY_STALE_MS = 10_000;
 /** 이 시간 동안 새 프레임이 없으면 버스가 조용하다고 본다 */
 const BUS_IDLE_MS = 20_000;
 /** 계기 하나가 이 시간 동안 말이 없으면 그 기기는 끊긴 것으로 본다 */
@@ -48,7 +54,7 @@ interface CanHealth {
 }
 
 interface Bridge {
-  sock: net.Socket | null;
+  abort: AbortController | null;
   connected: boolean;
   error: string | null;
   buf: string;
@@ -59,15 +65,17 @@ interface Bridge {
   lastRxFrames: number;
   /** 게이트웨이가 알려주는, 버스에서 관측된 전체 PGN 목록 */
   pgnsSeen: number[];
+  /** 마지막으로 줄이 도착한 시각 — "열려 있음"과 "받고 있음"을 가르는 기준 */
+  lastLineAt: number;
   timer: NodeJS.Timeout | null;
 }
 
 const g = globalThis as unknown as { __seatalk?: Bridge };
 
-const host = () => process.env.SEATALK_HOST || DEFAULT_HOST;
-const port = () => Number(process.env.SEATALK_PORT || DEFAULT_PORT);
+const relay = () => process.env.SEATALK_RELAY || DEFAULT_RELAY;
 
 function handleLine(b: Bridge, line: string) {
+  b.lastLineAt = Date.now();
   let msg: Record<string, unknown>;
   try {
     msg = JSON.parse(line);
@@ -114,46 +122,51 @@ function handleLine(b: Bridge, line: string) {
 }
 
 function connect(b: Bridge) {
-  if (b.sock) return;
-  const sock = net.createConnection({
-    host: host(),
-    port: port(),
-    // .local 기본 해석은 AAAA 질의를 기다리느라 느리다 — ESP32 는 IPv4 뿐이다
-    lookup: (h, o, cb) => dns.lookup(h, { ...o, family: 4 }, cb),
-  });
-  b.sock = sock;
-  sock.setEncoding("utf-8");
-  sock.setNoDelay(true);
+  if (b.abort) return;
+  const ac = new AbortController();
+  b.abort = ac;
 
-  sock.on("connect", () => {
-    b.connected = true;
-    b.error = null;
-  });
-  sock.on("data", (chunk: string) => {
-    b.buf += chunk;
-    let i;
-    while ((i = b.buf.indexOf("\n")) >= 0) {
-      const line = b.buf.slice(0, i).trim();
-      b.buf = b.buf.slice(i + 1);
-      if (line) handleLine(b, line);
+  void (async () => {
+    try {
+      const res = await fetch(relay(), {
+        signal: ac.signal,
+        headers: { Accept: "text/event-stream" },
+        cache: "no-store",
+      });
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      b.connected = true;
+      b.error = null;
+
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        b.buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = b.buf.indexOf("\n")) >= 0) {
+          const raw = b.buf.slice(0, i).trim();
+          b.buf = b.buf.slice(i + 1);
+          // SSE 프레임에서 데이터 줄만 꺼낸다 (retry:/빈 줄은 버린다)
+          if (raw.startsWith("data:")) handleLine(b, raw.slice(5).trim());
+        }
+        if (b.buf.length > 64_000) b.buf = "";
+      }
+      b.error = "중계가 종료되었습니다";
+    } catch (err) {
+      if (!ac.signal.aborted) b.error = (err as Error).message;
+    } finally {
+      b.connected = false;
+      b.buf = "";
+      if (b.abort === ac) b.abort = null;
     }
-    // 줄바꿈 없이 계속 커지면(형식 이상) 버퍼가 무한히 자라지 않게 자른다
-    if (b.buf.length > 64_000) b.buf = "";
-  });
-  sock.on("error", (err) => {
-    b.error = err.message;
-  });
-  sock.on("close", () => {
-    b.connected = false;
-    b.sock = null;
-    b.buf = "";
-  });
+  })();
 }
 
 function start(): Bridge {
   if (g.__seatalk) return g.__seatalk;
   const b: Bridge = {
-    sock: null,
+    abort: null,
     connected: false,
     error: null,
     buf: "",
@@ -162,11 +175,18 @@ function start(): Bridge {
     lastFrameGrowth: 0,
     lastRxFrames: -1,
     pgnsSeen: [],
+    lastLineAt: 0,
     timer: null,
   };
   g.__seatalk = b;
   connect(b);
   b.timer = setInterval(() => {
+    // 조용해진 스트림은 끊고 새로 붙는다 — 살아 있는 척하는 연결이 제일 나쁘다
+    if (b.connected && b.lastLineAt > 0 && Date.now() - b.lastLineAt > RELAY_STALE_MS) {
+      b.abort?.abort();
+      b.abort = null;
+      b.connected = false;
+    }
     if (!b.connected) connect(b);
   }, RECONNECT_MS);
   b.timer.unref?.();
@@ -186,7 +206,12 @@ export interface SeatalkDeviceView {
 }
 
 export interface SeatalkStatus {
-  /** 게이트웨이 TCP 소켓 */
+  /**
+   * 중계에서 실제로 줄이 들어오고 있는가.
+   * 소켓/스트림이 열려 있다는 사실만으로 true 로 두면 안 된다 — 네트워크가
+   * 바뀌어 상대가 사라져도 커널은 한동안 "연결됨"으로 들고 있어서, 화면이
+   * "연결됨"이라고 말하는 동안 아무 값도 안 들어오는 상태가 된다(실제로 겪었다).
+   */
   connected: boolean;
   /** 게이트웨이가 CAN 컨트롤러 상태를 보고하는가 */
   gateway: string | null;
@@ -222,15 +247,19 @@ export function getSeatalkStatus(): SeatalkStatus {
       count: e.count,
     }));
 
+  // 스트림이 열려 있어도 조용하면 연결로 치지 않는다
+  const receiving =
+    b.connected && b.lastLineAt > 0 && now - b.lastLineAt < RELAY_STALE_MS;
+
   return {
-    connected: b.connected,
+    connected: receiving,
     gateway: b.health?.state ?? null,
     busActive: b.lastFrameGrowth > 0 && now - b.lastFrameGrowth < BUS_IDLE_MS,
     rxFrames: b.health?.rxFrames ?? null,
     rxMissed: b.health?.rxMissed ?? null,
     rxErr: b.health?.rxErr ?? null,
     upSec: b.health?.upSec ?? null,
-    endpoint: `${host()}:${port()}`,
+    endpoint: relay(),
     error: b.error,
     pgnsSeen: b.pgnsSeen,
     devices,

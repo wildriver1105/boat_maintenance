@@ -11,6 +11,7 @@ import DeviceMarker from "./DeviceMarker";
 import ShapesLayer, { type ShapeOffset } from "./edit/ShapesLayer";
 import type { EditTool } from "./edit/EditToolbar";
 import { layoutLabels } from "@/lib/labelLayout";
+import { hullEdgeYPx } from "@/lib/hull";
 import { groupReading, visibleDevices } from "@/lib/deviceGroups";
 import { summarize } from "@/lib/format";
 import { layerOn, type PlanLayersConfig } from "@/lib/planLayers";
@@ -133,6 +134,8 @@ export default function DeckPlan({
           ...effectivePos[d.id],
           labelOffset: view === "top" ? d.labelOffset : undefined,
         })),
+        // 측면 뷰의 선체는 모양이 달라 이 보정을 쓰지 않는다
+        view === "top" ? hullEdgeYPx : undefined,
       ),
     [mapDevices, effectivePos, view],
   );

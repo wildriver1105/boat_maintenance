@@ -58,6 +58,31 @@ export function hullTopPath(inset = 0): string {
   return smoothPath([stern, ...upper, bow, ...lower], true);
 }
 
+/**
+ * 평면 뷰에서 주어진 x(px)의 선체 가장자리 y(px) — 위쪽/아래쪽.
+ * 라벨을 선 밖에 놓을 때 쓴다. 선체 폭은 x 마다 다르므로 고정 밴드를 쓰면
+ * 중앙부(가장 넓은 곳)에서 라벨이 배 안으로 들어간다.
+ * 범위를 벗어난 x 는 가장 가까운 스테이션으로 갈음한다.
+ */
+export function hullEdgeYPx(xPixels: number): { top: number; bottom: number } {
+  const st = HULL.stations;
+  const xm = (xPixels - 1000) / PX_PER_M; // px → m
+  let hb = st[0].hb;
+  if (xm <= st[0].x) hb = st[0].hb;
+  else if (xm >= st[st.length - 1].x) hb = st[st.length - 1].hb;
+  else {
+    for (let i = 1; i < st.length; i++) {
+      if (xm <= st[i].x) {
+        const a = st[i - 1], b = st[i];
+        const t = (xm - a.x) / Math.max(1e-6, b.x - a.x);
+        hb = a.hb + (b.hb - a.hb) * t;
+        break;
+      }
+    }
+  }
+  return { top: zPx(-hb), bottom: zPx(hb) };
+}
+
 /* ---- 측면 프로파일 (side view) ---- */
 export function hullSidePath(): string {
   const st = HULL.stations;
