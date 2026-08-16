@@ -168,6 +168,16 @@ function DimmerControl({ reading }: { reading?: DeviceReading }) {
  */
 const TOGGLE_TIMEOUT_MS = 8000;
 
+/** 남은 시간 — 한 시간이 넘으면 시:분:초, 아니면 분:초 */
+function fmtRemain(ms: number): string {
+  const t = Math.max(0, Math.round(ms / 1000));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const sec = t % 60;
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${p2(m)}:${p2(sec)}` : `${m}:${p2(sec)}`;
+}
+
 function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceReading }) {
   const on = typeof reading?.values.on === "boolean" ? (reading.values.on as boolean) : null;
   const live = reading?.status === "ok" || reading?.status === "warning";
@@ -175,6 +185,9 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
   const [err, setErr] = useState<string | null>(null);
   const [advanced, setAdvanced] = useState(false);
   const [ledLocal, setLedLocal] = useState<number | null>(null);
+  const [customMin, setCustomMin] = useState("");
+  // 카운트다운은 1초마다 다시 그린다 (마감 시각은 서버가 준다)
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   // 기기가 요청한 상태를 확인해 주면 대기 해제
   useEffect(() => {
@@ -196,10 +209,16 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: device.id, on: next }),
       });
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `HTTP ${r.status}`);
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.error ?? `HTTP ${r.status}`);
+      // 서버가 기기 응답까지 확인해 준다. 확인이 왔으면 대기 표시를 바로 거두고,
+      // 못 받았으면 그 사실을 말한다 — 잠자코 있으면 눌린 건지 알 수 없다.
+      if (body.confirmed) setPending(null);
+      else setErr("플러그가 확인 신호를 보내지 않았습니다 — 잠시 후 상태를 확인하세요");
     } catch (e) {
       setErr((e as Error).message);
-      setPending(null);
+    } finally {
+      setPending((p) => (p === next ? null : p));
     }
   };
 
@@ -218,14 +237,37 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
     }
   };
 
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
   const num = (k: string) =>
     typeof reading?.values[k] === "number" ? (reading.values[k] as number) : null;
   const watts = num("watts");
   const amps = num("amps");
   const kwh = num("kwh");
   const meteringOnly = reading?.values.meteringOnly === true;
-  // 지금 걸려 있는 타이머 (켜짐이면 끄기 예약, 꺼짐이면 켜기 예약)
-  const countdown = (on ? num("countdownOff") : num("countdownOn")) ?? 0;
+  // 지금 걸려 있는 타이머 — 서버가 준 마감 시각으로 남은 시간을 센다
+  const timerEndsAt = num("timerEndsAt");
+  const remainMs = timerEndsAt != null && timerEndsAt > nowMs ? timerEndsAt - nowMs : null;
+  // 진행률의 분모는 **처음 건 길이**(서버가 기억한다)여야 한다. 컴포넌트가 처음
+  // 본 남은 시간을 100% 로 삼으면, 패널을 닫았다 열 때마다 막대가 가득 찬 채로
+  // 다시 시작해 남은 시간과 어긋난다.
+  const timerTotalMs = (num("timerTotalSec") ?? 0) * 1000;
+  const timerPct =
+    remainMs != null && timerTotalMs > 0
+      ? Math.max(0, Math.min(100, (remainMs / timerTotalMs) * 100))
+      : 0;
+
+  const startTimer = async (minutes: number) => {
+    if (!(minutes >= 1)) return;
+    const sec = Math.min(65535, Math.round(minutes * 60));
+    await sendOption(on ? { countdown_to_turn_off: sec } : { countdown_to_turn_on: sec });
+    setCustomMin("");
+  };
+  const cancelTimer = () =>
+    sendOption({ countdown_to_turn_off: 0, countdown_to_turn_on: 0 });
   // 표시등 밝기는 이 펌웨어(v47)가 현재값을 보고하지 않는다 — 쓰기만 된다.
   // 모르는 값을 0% 처럼 보이게 두면 계기를 믿을 수 없게 되므로, 내가 설정한
   // 값이 있을 때만 숫자를 보여주고 그 전에는 모른다고 적는다.
@@ -292,6 +334,7 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
           // 잠금 중에는 끄기가 펌웨어에서 무시된다 — 눌리는데 아무 일도
           // 일어나지 않으면 고장으로 읽히므로, 아예 못 누르게 하고 이유를 적는다
           const blocked = meteringOnly && target === false;
+          const busy = pending === target;
           return (
             <button
               key={label as string}
@@ -306,7 +349,7 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
                   : "border border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
-              {label}
+              {busy ? (target ? "켜는 중…" : "끄는 중…") : label}
             </button>
           );
         })}
@@ -352,42 +395,80 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
 
           {advanced && (
             <div className="mt-2.5 space-y-3">
-              {/* 타이머 — 지금 상태의 반대로 뒤집는다 (켜져 있으면 끄기 예약) */}
+              {/* 타이머 — 지금 상태의 반대로 뒤집는다 (켜져 있으면 끄기 예약).
+                  기기는 남은 시간을 알려주지 않으므로 서버가 기록한 마감 시각을
+                  받아 여기서 1초마다 센다. */}
               <div>
                 <div className="flex items-baseline justify-between">
                   <span className="text-[11px] text-slate-500">
                     타이머 {on ? "(끄기 예약)" : "(켜기 예약)"}
                   </span>
-                  <span className="text-[11px] tabular-nums text-slate-400">
-                    {countdown > 0 ? `${Math.ceil(countdown / 60)}분 남음` : "없음"}
-                  </span>
+                  {remainMs != null && (
+                    <span className="text-[11px] font-medium tabular-nums text-sky-700">
+                      {fmtRemain(remainMs)} 남음
+                    </span>
+                  )}
                 </div>
-                <div className="mt-1 flex gap-1.5">
-                  {[30, 60, 180].map((min) => (
-                    <button
-                      key={min}
-                      onClick={() =>
-                        void sendOption(
-                          on
-                            ? { countdown_to_turn_off: min * 60 }
-                            : { countdown_to_turn_on: min * 60 },
-                        )
-                      }
-                      className="flex-1 rounded-lg border border-slate-200 py-1 text-[11px] text-slate-600 hover:bg-slate-50"
-                    >
-                      {min < 60 ? `${min}분` : `${min / 60}시간`}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() =>
-                      void sendOption({ countdown_to_turn_off: 0, countdown_to_turn_on: 0 })
-                    }
-                    disabled={countdown === 0}
-                    className="flex-1 rounded-lg border border-slate-200 py-1 text-[11px] text-slate-500 hover:bg-slate-50 disabled:opacity-40"
-                  >
-                    취소
-                  </button>
-                </div>
+
+                {remainMs != null ? (
+                  <div className="mt-1.5">
+                    {/* 얼마나 지났는지 눈으로 보이게 — 숫자만으로는 감이 안 온다 */}
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-sky-500 transition-[width] duration-1000"
+                        style={{ width: `${timerPct}%` }}
+                      />
+                    </div>
+                    <div className="mt-1.5 flex gap-1.5">
+                      <button
+                        onClick={() => void cancelTimer()}
+                        className="flex-1 rounded-lg border border-slate-200 py-1 text-[11px] text-slate-600 hover:bg-slate-50"
+                      >
+                        타이머만 취소
+                      </button>
+                      <button
+                        onClick={() => void send(!on)}
+                        className="flex-1 rounded-lg border border-slate-200 py-1 text-[11px] text-slate-600 hover:bg-slate-50"
+                      >
+                        지금 {on ? "끄기" : "켜기"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {[10, 30, 60, 180, 360, 720].map((min) => (
+                        <button
+                          key={min}
+                          onClick={() => void startTimer(min)}
+                          className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-50"
+                        >
+                          {min < 60 ? `${min}분` : `${min / 60}시간`}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={1}
+                        max={1080}
+                        value={customMin}
+                        onChange={(e) => setCustomMin(e.target.value)}
+                        placeholder="분"
+                        className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-[11px] text-slate-800 placeholder:text-slate-400 outline-none focus:border-sky-500"
+                      />
+                      <span className="text-[11px] text-slate-400">분 뒤</span>
+                      <button
+                        onClick={() => void startTimer(Number(customMin))}
+                        disabled={!(Number(customMin) >= 1)}
+                        className="rounded-lg bg-sky-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-sky-700 disabled:opacity-40"
+                      >
+                        {on ? "끄기 예약" : "켜기 예약"}
+                      </button>
+                    </div>
+                    <p className="mt-1 text-[10px] text-slate-400">최대 18시간(1080분)</p>
+                  </>
+                )}
               </div>
 
               {/* 정전 복구 후 동작 — 무인 상태에서 되살아나면 곤란한 부하는 '꺼짐' */}

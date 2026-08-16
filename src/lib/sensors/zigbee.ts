@@ -4,7 +4,12 @@
 // 것으로 착각하게 된다).
 
 import type { Device, DeviceReading, DeviceStatus } from "@/lib/types";
-import { getZigbeeDevice, isZigbeeDeviceLive, requestZigbeeState } from "@/lib/zigbee/mqtt";
+import {
+  getZigbeeDevice,
+  getZigbeeTimer,
+  isZigbeeDeviceLive,
+  requestZigbeeState,
+} from "@/lib/zigbee/mqtt";
 import { zigbeeBindingOf } from "@/lib/zigbee/binding";
 import type { SensorSource } from "./types";
 
@@ -60,11 +65,13 @@ export class ZigbeeSensorSource implements SensorSource {
         values.meteringOnly = v.metering_only_mode === "ON";
       const led = num(v.led_brightness);
       if (led !== undefined) values.ledBrightness = led;
-      // 남은 타이머 (0 = 없음)
-      const cOff = num(v.countdown_to_turn_off);
-      const cOn = num(v.countdown_to_turn_on);
-      if (cOff !== undefined) values.countdownOff = cOff;
-      if (cOn !== undefined) values.countdownOn = cOn;
+      // 남은 시간은 기기가 세어주지 않는다 — 서버가 기록한 마감 시각을 싣는다
+      const timer = getZigbeeTimer(b.id);
+      if (timer) {
+        values.timerEndsAt = timer.endsAt;
+        values.timerAction = timer.action;
+        values.timerTotalSec = timer.totalSec;
+      }
 
       // 값은 오는데 링크가 약하면 경고 — 곧 끊길 수 있다는 신호다
       const status: DeviceStatus = lqi !== undefined && lqi < WEAK_LINK ? "warning" : "ok";

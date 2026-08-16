@@ -14,9 +14,12 @@ import { zigbeeBindingOf } from "@/lib/zigbee/binding";
 import {
   getZigbeeDevice,
   getZigbeeStatus,
+  getZigbeeTimer,
   isZigbeeDeviceLive,
   publishSet,
   setZigbeeSwitch,
+  setZigbeeTimer,
+  waitForEcho,
 } from "@/lib/zigbee/mqtt";
 
 export const runtime = "nodejs";
@@ -52,6 +55,8 @@ export async function GET() {
         model: b!.model,
         live,
         values: live && e ? e.values : {},
+        // 기기는 남은 시간을 보고하지 않으므로 서버가 센 값을 함께 준다
+        timer: getZigbeeTimer(b!.id),
       };
     });
   return NextResponse.json(
@@ -120,12 +125,37 @@ export async function PUT(req: Request) {
     if (!publishSet(found.binding.id, set)) {
       return NextResponse.json({ error: "MQTT 브로커에 연결되어 있지 않습니다" }, { status: 503 });
     }
-    return NextResponse.json({ ok: true, id: body.id, set });
+    // 카운트다운은 남은 시간을 기기가 알려주지 않으므로 우리가 마감 시각을 센다
+    if (typeof set.countdown_to_turn_off === "number")
+      setZigbeeTimer(found.binding.id, set.countdown_to_turn_off, "off");
+    if (typeof set.countdown_to_turn_on === "number")
+      setZigbeeTimer(found.binding.id, set.countdown_to_turn_on, "on");
+    return NextResponse.json({ ok: true, id: body.id, set, timer: getZigbeeTimer(found.binding.id) });
   }
 
-  if (!setZigbeeSwitch(found.binding.id, body.on as boolean)) {
+  const want = body.on as boolean;
+  if (!setZigbeeSwitch(found.binding.id, want)) {
     return NextResponse.json({ error: "MQTT 브로커에 연결되어 있지 않습니다" }, { status: 503 });
   }
-  // 전환 확인은 기기가 보내는 다음 상태로 이뤄진다 (SSE 로 도착)
-  return NextResponse.json({ ok: true, id: body.id, requested: body.on ? "ON" : "OFF" });
+
+  // 사람이 손으로 껐다/켰다면 걸어둔 카운트다운은 의미가 없다 — 같이 지운다.
+  // (타이머만 남겨두면 잊고 있다가 엉뚱한 시각에 혼자 동작한다)
+  setZigbeeTimer(found.binding.id, 0, want ? "on" : "off");
+  publishSet(found.binding.id, { countdown_to_turn_off: 0, countdown_to_turn_on: 0 });
+
+  // **보낸 뒤 돌아오는 신호를 기다린다.** 이게 없으면 호출자는 다음 폴링까지
+  // 아무것도 모르고, 화면은 눌러도 반응이 없는 것처럼 보인다.
+  const echo = await waitForEcho(
+    found.binding.id,
+    (v) => v.state === (want ? "ON" : "OFF"),
+    4000,
+  );
+  return NextResponse.json({
+    ok: true,
+    id: body.id,
+    requested: want ? "ON" : "OFF",
+    confirmed: echo !== null,
+    state: echo?.state ?? null,
+    watts: typeof echo?.power === "number" ? echo.power : null,
+  });
 }

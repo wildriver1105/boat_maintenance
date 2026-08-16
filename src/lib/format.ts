@@ -53,8 +53,21 @@ export function summarize(device: Device, r?: DeviceReading): string {
       if (v.mode === undefined) return "미수신";
       return v.mode === "off" ? "정지" : `${v.mode} · ${v.outputW ?? 0}W`;
     case "navigation":
-    case "comms":
-      return v.online ? `온라인 · ${v.signal}%` : "오프라인";
+    case "comms": {
+      // online/signal 은 목업 시절 형식이다. 실측 소스(SeaTalk 등)는 그 기기가
+      // 실제로 보내는 값을 싣기 때문에 online 이 없고, 그걸 "오프라인"으로
+      // 읽어버리면 **마커는 초록인데 글자는 오프라인**인 상태가 된다.
+      if (typeof v.online === "boolean") return v.online ? `온라인 · ${v.signal}%` : "오프라인";
+      if (r?.status === "offline") return "미연결";
+      const parts: string[] = [];
+      if (typeof v.headingDeg === "number") parts.push(`${v.headingDeg}°`);
+      if (typeof v.sogKn === "number") parts.push(`${v.sogKn} kn`);
+      if (typeof v.sats === "number") parts.push(`위성 ${v.sats}`);
+      if (typeof v.windKn === "number") parts.push(`바람 ${v.windKn} kn`);
+      if (typeof v.stwKn === "number") parts.push(`대수 ${v.stwKn} kn`);
+      if (typeof v.waterC === "number") parts.push(`${v.waterC}°C`);
+      return parts.length ? parts.join(" · ") : "수신 중";
+    }
     case "safety":
       return v.armed ? "정상" : "점검 필요";
     case "lighting":
@@ -120,8 +133,20 @@ export function detailRows(device: Device, r?: DeviceReading): [string, string][
       break;
     case "navigation":
     case "comms":
-      rows.push(["연결", v.online ? "온라인" : "오프라인"]);
-      if (typeof v.signal === "number") rows.push(["신호", `${v.signal} %`]);
+      if (typeof v.online === "boolean") {
+        rows.push(["연결", v.online ? "온라인" : "오프라인"]);
+        if (typeof v.signal === "number") rows.push(["신호", `${v.signal} %`]);
+      } else {
+        // 실측(SeaTalk 등) — 이 기기가 실제로 보내는 값을 그대로 보여준다
+        rows.push(["연결", r.status === "offline" ? "미연결" : "수신 중"]);
+        if (typeof v.headingDeg === "number") rows.push(["선수방위", `${v.headingDeg} °`]);
+        if (typeof v.sogKn === "number") rows.push(["대지속력", `${v.sogKn} kn`]);
+        if (typeof v.sats === "number") rows.push(["위성", `${v.sats} 개`]);
+        if (typeof v.windKn === "number") rows.push(["풍속", `${v.windKn} kn`]);
+        if (typeof v.stwKn === "number") rows.push(["대수속력", `${v.stwKn} kn`]);
+        if (typeof v.waterC === "number") rows.push(["수온", `${v.waterC} °C`]);
+        if (typeof v["메시지"] === "number") rows.push(["수신 메시지", `${v["메시지"]} 건`]);
+      }
       break;
     case "safety":
       rows.push(["상태", v.armed ? "정상(Armed)" : "점검 필요"]);

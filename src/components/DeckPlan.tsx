@@ -30,6 +30,23 @@ import {
 
 const SIDE_DEFAULT_Y = 430;
 
+/** 예약 길이 — "30분", "3시간" 처럼 사람이 건 값 그대로 */
+function fmtSetting(sec: number): string {
+  const m = Math.round(sec / 60);
+  if (m % 60 === 0 && m >= 60) return `${m / 60}시간`;
+  return `${m}분`;
+}
+
+/** 남은 시간 — 한 시간이 넘으면 시:분:초, 아니면 분:초 */
+function fmtLeft(ms: number): string {
+  const t = Math.max(0, Math.round(ms / 1000));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const sec = t % 60;
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${p2(m)}:${p2(sec)}` : `${m}:${p2(sec)}`;
+}
+
 type Pt = { x: number; y: number };
 
 type Props = {
@@ -98,6 +115,17 @@ export default function DeckPlan({
   // 측정 도구 (정규 좌표로 저장)
   const [measure, setMeasure] = useState<{ a: Pt; b: Pt } | null>(null);
   const [measuring, setMeasuring] = useState(false);
+
+  // 카운트다운 라벨용 1초 시계. 예약이 하나도 없으면 돌리지 않는다.
+  const hasTimer = Object.values(readings).some(
+    (r) => typeof r?.values?.timerEndsAt === "number",
+  );
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!hasTimer) return;
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [hasTimer]);
 
   // 도구/뷰가 바뀌면 측정선 제거
   useEffect(() => {
@@ -443,6 +471,30 @@ export default function DeckPlan({
                   >
                     {summarize(d, r)}
                   </text>
+                  {/* 예약이 걸려 있으면 설정값과 남은 시간을 한 줄 더 — 마커만 보고도
+                      "이건 곧 꺼진다"를 알 수 있어야 한다 */}
+                  {(() => {
+                    const endsAt = r?.values?.timerEndsAt;
+                    if (typeof endsAt !== "number" || endsAt <= nowMs) return null;
+                    const total = r?.values?.timerTotalSec;
+                    const act = r?.values?.timerAction === "on" ? "켜기" : "끄기";
+                    const setting = typeof total === "number" ? `${fmtSetting(total)} ` : "";
+                    return (
+                      <text
+                        x={a.x}
+                        y={a.y > 425 ? a.y + 44 : a.y + 15}
+                        textAnchor="middle"
+                        fontSize={11}
+                        fill="#0284c7"
+                        stroke="#ffffff"
+                        strokeWidth={2.5}
+                        paintOrder="stroke"
+                        style={{ userSelect: "none" }}
+                      >
+                        {`⏱ ${setting}${act} 예약 · ${fmtLeft(endsAt - nowMs)} 남음`}
+                      </text>
+                    );
+                  })()}
                 </g>
               );
             })}

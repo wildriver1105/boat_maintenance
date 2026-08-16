@@ -25,9 +25,22 @@ export interface ZigbeeDeviceState {
   lastMessageAt: number;
 }
 
+/** 우리가 건 카운트다운 — 기기는 남은 시간을 보고하지 않으므로 서버가 기억한다 */
+export interface ZigbeeTimer {
+  /** 이 시각에 동작한다 (epoch ms) */
+  endsAt: number;
+  /** 그때 켜지는가 꺼지는가 */
+  action: "on" | "off";
+  /** 처음 건 길이(초) — "30분 예약" 처럼 설정값을 그대로 보여주기 위해 남긴다 */
+  totalSec: number;
+}
+
 interface ZigbeeBroker {
   client: MqttClient | null;
   devices: Map<string, ZigbeeDeviceState>; // ieee(또는 friendly_name) → 상태
+  timers: Map<string, ZigbeeTimer>;
+  /** 명령을 보낸 뒤 기기 응답을 기다리는 대기자들 */
+  waiters: Set<(id: string, values: Record<string, unknown>) => void>;
   bridgeOnline: boolean;
   connected: boolean;
   error: string | null;
@@ -56,6 +69,8 @@ function start(): ZigbeeBroker {
   const b: ZigbeeBroker = g.__zigbeeBroker ?? {
     client: null,
     devices: new Map(),
+    timers: new Map(),
+    waiters: new Set(),
     bridgeOnline: false,
     connected: false,
     error: null,
@@ -116,8 +131,13 @@ function start(): ZigbeeBroker {
       return;
     }
     if (parsed && typeof parsed === "object") {
-      e.values = { ...e.values, ...(parsed as Record<string, unknown>) };
+      const values = parsed as Record<string, unknown>;
+      e.values = { ...e.values, ...values };
       e.lastMessageAt = Date.now();
+      // 명령을 보낸 쪽이 "돌아온 신호"를 곧바로 알 수 있게 알린다.
+      // 이게 없으면 다음 폴링 주기까지 기다려야 해서, 눌러도 한동안 아무 일도
+      // 일어나지 않는 것처럼 보인다.
+      for (const w of b.waiters) w(id, e.values);
     }
   });
 
@@ -150,6 +170,53 @@ export function getZigbeeStatus(): ZigbeeStatus {
     deviceCount: b.devices.size,
     error: b.error,
   };
+}
+
+/**
+ * 명령을 보낸 뒤 기기가 되돌려주는 보고를 기다린다.
+ * ok(values) 가 참이 되면 그 값으로 resolve, 시간이 지나면 null.
+ */
+export function waitForEcho(
+  id: string,
+  ok: (values: Record<string, unknown>) => boolean,
+  timeoutMs = 4000,
+): Promise<Record<string, unknown> | null> {
+  const b = start();
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v: Record<string, unknown> | null) => {
+      if (done) return;
+      done = true;
+      b.waiters.delete(listener);
+      clearTimeout(timer);
+      resolve(v);
+    };
+    const listener = (msgId: string, values: Record<string, unknown>) => {
+      if (msgId === id && ok(values)) finish(values);
+    };
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    b.waiters.add(listener);
+  });
+}
+
+/** 카운트다운 기록 — 기기가 남은 시간을 보고하지 않으므로 여기서 센다 */
+export function setZigbeeTimer(id: string, seconds: number, action: "on" | "off"): void {
+  const b = start();
+  if (seconds > 0)
+    b.timers.set(id, { endsAt: Date.now() + seconds * 1000, action, totalSec: seconds });
+  else b.timers.delete(id);
+}
+
+export function getZigbeeTimer(id: string): ZigbeeTimer | null {
+  const b = start();
+  const t = b.timers.get(id);
+  if (!t) return null;
+  // 지난 타이머는 스스로 지운다 (기기가 이미 동작했다)
+  if (t.endsAt <= Date.now()) {
+    b.timers.delete(id);
+    return null;
+  }
+  return t;
 }
 
 /** 기기 상태. 아직 아무 값도 못 받았으면 null */
