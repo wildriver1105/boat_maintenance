@@ -17,7 +17,13 @@ export type DeviceCategory =
   | "outlet" // AC 콘센트 (스마트플러그 — 개별 부하 계측)
   | "other"; // 기타
 
-export type DeviceStatus = "ok" | "warning" | "alert" | "offline";
+/**
+ * 장비/그룹 상태.
+ * caution 은 그룹 전용 — 하위 기기 일부만 끊긴 상태다. 전부 끊긴 offline(회색)과
+ * 같은 색으로 칠하면 "시스템이 통째로 죽었다"로 읽히고, warning(주황)으로 칠하면
+ * 계측값에 문제가 있다는 뜻으로 읽힌다. 둘 다 사실이 아니라 한 단계를 따로 둔다.
+ */
+export type DeviceStatus = "ok" | "caution" | "warning" | "alert" | "offline";
 
 /** 도면 뷰 — 평면(위) / 좌현 프로파일 / 우현 프로파일 / 3D */
 export type DeckView = "top" | "port" | "starboard" | "3d";
@@ -86,6 +92,7 @@ export const STATUS_META: Record<
   { label: string; color: string }
 > = {
   ok: { label: "정상", color: "#10b981" },
+  caution: { label: "일부 미연결", color: "#eab308" },
   warning: { label: "주의", color: "#f59e0b" },
   alert: { label: "경고", color: "#ef4444" },
   offline: { label: "미연결", color: "#9ca3af" },

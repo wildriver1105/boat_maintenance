@@ -15,8 +15,17 @@ const POWER_ON_BEHAVIOR: Record<string, string> = {
 export function summarize(device: Device, r?: DeviceReading): string {
   // 그룹(시스템) 집계 리딩
   if (r?.sensorId?.startsWith("group:")) {
-    const n = r.values["기기"], a = r.values["경고"], w = r.values["주의"];
-    const tail = (a as number) > 0 ? ` · 경고 ${a}` : (w as number) > 0 ? ` · 주의 ${w}` : " · 정상";
+    const n = r.values["기기"], a = r.values["경고"], w = r.values["주의"], off = r.values["미연결"];
+    // 심각한 것부터 하나만 — 미연결까지 넣지 않으면 아이콘은 노란데 글자는
+    // "정상"이라고 말하는 어긋난 상태가 된다
+    const tail =
+      (a as number) > 0
+        ? ` · 경고 ${a}`
+        : (w as number) > 0
+          ? ` · 주의 ${w}`
+          : (off as number) > 0
+            ? ` · 미연결 ${off}`
+            : " · 정상";
     return `기기 ${n}개${tail}`;
   }
   if (!device.sensorId) return "센서 미연결";

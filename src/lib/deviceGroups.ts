@@ -2,7 +2,7 @@
 // 예: "Victron 시스템" 마커 하나가 맵에 표시되고, 상태는 하위 기기들의 최악 상태.
 import type { Device, DeviceReading, DeviceStatus } from "./types";
 
-const SEVERITY: Record<DeviceStatus, number> = { ok: 0, offline: 1, warning: 2, alert: 3 };
+const SEVERITY: Record<DeviceStatus, number> = { ok: 0, caution: 1, offline: 2, warning: 3, alert: 4 };
 
 /**
  * 맵(마커/라벨)에 표시할 최상위 디바이스.
@@ -48,9 +48,16 @@ export function groupReading(
     const s: DeviceStatus = k.sensorId ? readings[k.sensorId]?.status ?? "offline" : "offline";
     if (s === "alert") alert++;
     else if (s === "warning") warning++;
-    else if (s === "offline") offline++;
+    else if (s === "offline" || s === "caution") offline++;
     if (SEVERITY[s] > SEVERITY[worst]) worst = s;
   }
+
+  // 일부만 끊긴 그룹은 offline(회색)이 아니라 caution 이다. MPPT 한 대가 빠졌다고
+  // 시스템 전체가 죽은 것처럼 보이면, 정작 전체가 끊겼을 때 그 사실을 알아채지
+  // 못한다 — 같은 색이 두 상황을 가리키게 되기 때문이다.
+  const partial = offline > 0 && offline < kids.length;
+  if (partial && worst === "offline") worst = "caution";
+
   return {
     sensorId: `group:${device.id}`,
     status: worst,

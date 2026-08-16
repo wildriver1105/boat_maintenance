@@ -3,7 +3,7 @@
 
 import { STATUS_META, type DeviceStatus } from "@/lib/types";
 
-const ORDER: DeviceStatus[] = ["ok", "warning", "alert", "offline"];
+const ORDER: DeviceStatus[] = ["ok", "caution", "warning", "alert", "offline"];
 
 export default function StatusLegend() {
   return (

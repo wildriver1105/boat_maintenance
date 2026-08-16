@@ -231,7 +231,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
 
   // 상태별 집계 (요약 배지) — 그룹은 집계 상태 1개로 센다
   const summary = useMemo(() => {
-    const counts = { ok: 0, warning: 0, alert: 0, offline: 0 };
+    const counts = { ok: 0, caution: 0, warning: 0, alert: 0, offline: 0 };
     for (const d of topDevices) {
       counts[groupReading(d, devices, readings)?.status ?? "offline"]++;
     }
@@ -349,8 +349,10 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
 
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4 pt-20">
           {/* 상태 집계 */}
-          <div className="grid grid-cols-4 gap-2">
-            {(["ok", "warning", "alert", "offline"] as const).map((s) => (
+          <div className={`grid gap-2 ${summary.caution > 0 ? "grid-cols-5" : "grid-cols-4"}`}>
+            {(["ok", "caution", "warning", "alert", "offline"] as const)
+              .filter((s) => s !== "caution" || summary.caution > 0)
+              .map((s) => (
               <div
                 key={s}
                 className="rounded-lg bg-white/70 py-2 text-center ring-1 ring-black/5"
