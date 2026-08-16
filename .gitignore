@@ -66,3 +66,6 @@ certs/
 # (공개 인증서라 유출 위험은 없지만, 이 Mac 전용 산출물이고 사용자명이 들어간다)
 public/rootCA.crt
 public/rootCA.pem
+
+# 계측 이력 — 이 배에서 수집된 실측값 (기기마다 다르고 용량이 계속 는다)
+data/history/

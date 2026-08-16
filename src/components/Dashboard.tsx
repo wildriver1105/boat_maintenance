@@ -24,6 +24,7 @@ import DeviceDetailPanel from "./DeviceDetailPanel";
 import DevicePlacementForm, { type DraftDevice } from "./DevicePlacementForm";
 import VictronPanel from "./VictronPanel";
 import EnginePanel from "./EnginePanel";
+import MetricsPanel from "./MetricsPanel";
 import {
   CATEGORY_META,
   STATUS_META,
@@ -52,6 +53,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
   const [source, setSource] = useState<string | null>(null);
   const [electricalOpen, setElectricalOpen] = useState(false);
   const [engineOpen, setEngineOpen] = useState(false);
+  const [metricsOpen, setMetricsOpen] = useState(false);
   const [pendingOpen, setPendingOpen] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -323,6 +325,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
         onTogglePanel={() => setPanelOpen((v) => !v)}
         onOpenElectrical={() => setElectricalOpen(true)}
         onOpenEngine={() => setEngineOpen(true)}
+        onOpenMetrics={() => setMetricsOpen(true)}
         connected={connected}
         source={source}
         deviceCount={devices.length}
@@ -462,6 +465,7 @@ export default function Dashboard({ rightSlot }: { rightSlot?: ReactNode }) {
 
       {electricalOpen && <VictronPanel onClose={() => setElectricalOpen(false)} />}
       {engineOpen && <EnginePanel onClose={() => setEngineOpen(false)} />}
+      {metricsOpen && <MetricsPanel devices={devices} onClose={() => setMetricsOpen(false)} />}
 
       {draft && (
         <DevicePlacementForm

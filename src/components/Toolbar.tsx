@@ -22,6 +22,7 @@ type Props = {
   onTogglePanel: () => void;
   onOpenElectrical: () => void;
   onOpenEngine: () => void;
+  onOpenMetrics: () => void;
   connected: boolean;
   source: string | null;
   deviceCount: number;
@@ -39,6 +40,7 @@ export default function Toolbar({
   onTogglePanel,
   onOpenElectrical,
   onOpenEngine,
+  onOpenMetrics,
   connected,
   source,
   deviceCount,
@@ -96,6 +98,13 @@ export default function Toolbar({
           className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
         >
           ⚙️ 엔진
+        </button>
+
+        <button
+          onClick={onOpenMetrics}
+          className="rounded-xl px-3 py-2 text-sm font-medium text-sky-600 transition-colors hover:bg-sky-50"
+        >
+          📈 추이
         </button>
 
         {view !== "3d" && (
