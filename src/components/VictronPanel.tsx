@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { VictronSnapshot } from "@/lib/victron/types";
 import { Bars, FlowRow, Meter, RadialGauge, type Severity } from "./gauges/Gauges";
+import VictronControls from "./VictronControls";
 
 const POLL_MS = 2000;
 
@@ -329,6 +330,10 @@ export default function VictronPanel({ onClose }: { onClose: () => void }) {
                   ]}
                 />
               </div>
+
+              <Section title="충전 설정 (쓰기)">
+                <VictronControls />
+              </Section>
 
               {/* AC 콘센트별 소비 — Victron 은 AC 부하 총합만 보므로 내역은 여기서만 보인다 */}
               {plugs.length > 0 && (

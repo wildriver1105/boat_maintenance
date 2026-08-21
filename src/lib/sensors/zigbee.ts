@@ -63,8 +63,10 @@ export class ZigbeeSensorSource implements SensorSource {
       // 켜진 채 고정되어 있는가 (UI 의 "끄기 잠금")
       if (typeof v.metering_only_mode === "string")
         values.meteringOnly = v.metering_only_mode === "ON";
-      const led = num(v.led_brightness);
-      if (led !== undefined) values.ledBrightness = led;
+      // 펌웨어 버전 — 기기가 지원하지 않는 기능을 화면이 설명할 때 쓴다
+      const upd = v.update as { installed_version?: unknown; latest_version?: unknown } | undefined;
+      if (typeof upd?.installed_version === "number") values.fwInstalled = upd.installed_version;
+      if (typeof upd?.latest_version === "number") values.fwLatest = upd.latest_version;
       // 남은 시간은 기기가 세어주지 않는다 — 서버가 기록한 마감 시각을 싣는다
       const timer = getZigbeeTimer(b.id);
       if (timer) {

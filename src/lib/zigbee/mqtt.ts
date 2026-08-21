@@ -13,8 +13,20 @@
 // 그것이 없을 때만 STALE_MS 로 판단한다.
 
 import mqtt, { type MqttClient } from "mqtt";
+import { promises as fs } from "fs";
+import fsSync from "fs";
+import path from "path";
 
 const BASE = "zigbee2mqtt";
+/**
+ * 걸어둔 카운트다운을 적어두는 곳. 플러그는 남은 시간을 알려주지 않아서 서버가
+ * 세는데, 그 기억이 메모리에만 있으면 앱을 재시작할 때 사라진다 — 플러그는
+ * 예약대로 동작하는데 화면만 모르는 상태가 된다.
+ *
+ * 저장하는 값은 "남은 초"가 아니라 **마감 시각(절대 시간)** 이다. 남은 초를
+ * 적어두면 앱이 꺼져 있던 시간만큼 통째로 어긋난다.
+ */
+const TIMER_FILE = path.join(process.cwd(), "data", "zigbee-timers.json");
 const STALE_MS = 15 * 60_000; // availability 가 없는 기기용 (플러그 리포팅 주기는 길다)
 
 export interface ZigbeeDeviceState {
@@ -54,6 +66,27 @@ const g = globalThis as unknown as { __zigbeeBroker?: ZigbeeBroker };
 const host = () => process.env.ZIGBEE_MQTT_HOST || "127.0.0.1";
 const port = () => Number(process.env.ZIGBEE_MQTT_PORT || 1883);
 
+function loadTimers(): Map<string, ZigbeeTimer> {
+  try {
+    const raw = JSON.parse(fsSync.readFileSync(TIMER_FILE, "utf-8")) as Record<string, ZigbeeTimer>;
+    const now = Date.now();
+    // 이미 지난 예약은 되살리지 않는다 (앱이 꺼져 있는 동안 플러그가 실행했다)
+    return new Map(Object.entries(raw).filter(([, t]) => t?.endsAt > now));
+  } catch {
+    return new Map();
+  }
+}
+
+function saveTimers(b: ZigbeeBroker): void {
+  const obj = Object.fromEntries(b.timers);
+  void fs
+    .mkdir(path.dirname(TIMER_FILE), { recursive: true })
+    .then(() => fs.writeFile(TIMER_FILE, JSON.stringify(obj, null, 2) + "\n", "utf-8"))
+    .catch(() => {
+      /* 기록 실패가 조작을 막을 이유는 없다 — 화면 표시만 잃는다 */
+    });
+}
+
 function entry(b: ZigbeeBroker, id: string): ZigbeeDeviceState {
   let e = b.devices.get(id);
   if (!e) {
@@ -69,7 +102,7 @@ function start(): ZigbeeBroker {
   const b: ZigbeeBroker = g.__zigbeeBroker ?? {
     client: null,
     devices: new Map(),
-    timers: new Map(),
+    timers: loadTimers(),
     waiters: new Set(),
     bridgeOnline: false,
     connected: false,
@@ -134,6 +167,19 @@ function start(): ZigbeeBroker {
       const values = parsed as Record<string, unknown>;
       e.values = { ...e.values, ...values };
       e.lastMessageAt = Date.now();
+      // 예약해 둔 결과가 이미 이뤄져 있으면 그 예약은 지운다. 플러그가 정전으로
+      // 카운트다운을 잊었거나 누군가 손으로 조작한 경우, 우리 쪽에만 남은 예약이
+      // 영영 오지 않을 시각을 세게 된다.
+      const t = b.timers.get(id);
+      if (t && typeof values.state === "string") {
+        const already = (t.action === "on" && values.state === "ON") ||
+          (t.action === "off" && values.state === "OFF");
+        if (already) {
+          b.timers.delete(id);
+          saveTimers(b);
+        }
+      }
+
       // 명령을 보낸 쪽이 "돌아온 신호"를 곧바로 알 수 있게 알린다.
       // 이게 없으면 다음 폴링 주기까지 기다려야 해서, 눌러도 한동안 아무 일도
       // 일어나지 않는 것처럼 보인다.
@@ -205,6 +251,7 @@ export function setZigbeeTimer(id: string, seconds: number, action: "on" | "off"
   if (seconds > 0)
     b.timers.set(id, { endsAt: Date.now() + seconds * 1000, action, totalSec: seconds });
   else b.timers.delete(id);
+  saveTimers(b);
 }
 
 export function getZigbeeTimer(id: string): ZigbeeTimer | null {
@@ -214,6 +261,7 @@ export function getZigbeeTimer(id: string): ZigbeeTimer | null {
   // 지난 타이머는 스스로 지운다 (기기가 이미 동작했다)
   if (t.endsAt <= Date.now()) {
     b.timers.delete(id);
+    saveTimers(b);
     return null;
   }
   return t;

@@ -184,7 +184,6 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
   const [pending, setPending] = useState<boolean | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [advanced, setAdvanced] = useState(false);
-  const [ledLocal, setLedLocal] = useState<number | null>(null);
   const [customMin, setCustomMin] = useState("");
   // 카운트다운은 1초마다 다시 그린다 (마감 시각은 서버가 준다)
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -248,6 +247,8 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
   const amps = num("amps");
   const kwh = num("kwh");
   const meteringOnly = reading?.values.meteringOnly === true;
+  const fw = num("fwInstalled");
+  const fwLatest = num("fwLatest");
   // 지금 걸려 있는 타이머 — 서버가 준 마감 시각으로 남은 시간을 센다
   const timerEndsAt = num("timerEndsAt");
   const remainMs = timerEndsAt != null && timerEndsAt > nowMs ? timerEndsAt - nowMs : null;
@@ -268,12 +269,6 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
   };
   const cancelTimer = () =>
     sendOption({ countdown_to_turn_off: 0, countdown_to_turn_on: 0 });
-  // 표시등 밝기는 이 펌웨어(v47)가 현재값을 보고하지 않는다 — 쓰기만 된다.
-  // 모르는 값을 0% 처럼 보이게 두면 계기를 믿을 수 없게 되므로, 내가 설정한
-  // 값이 있을 때만 숫자를 보여주고 그 전에는 모른다고 적는다.
-  const ledReported = num("ledBrightness");
-  const ledShown = ledLocal ?? ledReported ?? 0;
-  const ledKnown = ledLocal != null || ledReported != null;
 
   // 이 플러그가 감당하는 한계(3200W)를 기준으로 부하가 어디쯤인지 보여준다.
   // 세 자리 숫자만 보면 100W 가 큰지 작은지 판단이 안 된다.
@@ -405,7 +400,7 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
                   </span>
                   {remainMs != null && (
                     <span className="text-[11px] font-medium tabular-nums text-sky-700">
-                      {fmtRemain(remainMs)} 남음
+                      약 {fmtRemain(remainMs)} 남음
                     </span>
                   )}
                 </div>
@@ -433,6 +428,12 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
                         지금 {on ? "끄기" : "켜기"}
                       </button>
                     </div>
+                    {/* 남은 시간은 우리가 센 값이다. 플러그는 남은 시간을 보고하지
+                        않고 자기 시계로만 세는데, 그 시계가 느리다(실측: 120초에
+                        10초 늦음). 그래서 긴 예약일수록 실제로는 더 늦게 동작한다. */}
+                    <p className="mt-1 text-[10px] text-slate-400">
+                      플러그 자체 시계로 동작합니다 — 예약이 길수록 표시보다 늦어질 수 있습니다.
+                    </p>
                   </div>
                 ) : (
                   <>
@@ -489,32 +490,16 @@ function OutletSwitch({ device, reading }: { device: Device; reading?: DeviceRea
                 </select>
               </div>
 
-              {/* 플러그 표시등 — 선실에서는 0 으로 꺼두는 편이 낫다 */}
+              {/* 표시등 밝기는 **이 기기가 거부한다.** z2m 이 genBasic.ledBrightness
+                  로 쓰는데 펌웨어(v47)가 UNSUPPORTED_ATTRIBUTE 로 되돌려보낸다.
+                  눌러도 아무 일 없는 슬라이더를 두느니 사실을 적어둔다. */}
               <div>
-                <div className="flex items-baseline justify-between">
-                  <label className="text-[11px] text-slate-500" htmlFor={`led-${device.id}`}>
-                    표시등 밝기
-                  </label>
-                  <span className="text-[11px] tabular-nums text-slate-400">
-                    {ledKnown ? `${ledShown}%` : "현재값 미보고"}
-                  </span>
-                </div>
-                <input
-                  id={`led-${device.id}`}
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={10}
-                  value={ledShown}
-                  onChange={(e) => setLedLocal(Number(e.target.value))}
-                  onPointerUp={(e) =>
-                    void sendOption({ led_brightness: Number((e.target as HTMLInputElement).value) })
-                  }
-                  onKeyUp={(e) =>
-                    void sendOption({ led_brightness: Number((e.target as HTMLInputElement).value) })
-                  }
-                  className="mt-1 w-full accent-lime-600"
-                />
+                <span className="text-[11px] text-slate-500">표시등 밝기</span>
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  이 플러그의 펌웨어(v{fw ?? "47"})는 표시등 밝기 변경을 지원하지 않습니다 —
+                  명령을 보내면 기기가 거부합니다(UNSUPPORTED_ATTRIBUTE).
+                  {fwLatest ? ` 펌웨어 v${fwLatest} 로 올리면 달라질 수 있습니다.` : ""}
+                </p>
               </div>
             </div>
           )}

@@ -125,6 +125,19 @@ export interface VictronBrokerState {
   error: string | null;
 }
 
+/**
+ * 설정값 쓰기 — Venus 는 `W/<portal>/<path>` 를 받아 적용하고, 결과를 다시
+ * `N/...` 로 내보낸다. 그래서 성공 판정은 이 함수가 아니라 **되돌아온 값**으로
+ * 한다 (읽기 전용 설계를 깨는 유일한 지점이라 여기 한 곳에만 둔다).
+ */
+export function publishVictron(path: string, value: number): { ok: boolean; error?: string } {
+  const b = start();
+  if (!b.client || !b.connected) return { ok: false, error: "Victron MQTT 에 연결되어 있지 않습니다" };
+  if (!b.portalId) return { ok: false, error: "포털 ID 를 아직 받지 못했습니다" };
+  b.client.publish(`W/${b.portalId}/${path}`, JSON.stringify({ value }));
+  return { ok: true };
+}
+
 /** 브로커를 (필요시) 기동하고 현재 상태를 반환. API 라우트에서 호출한다. */
 export function getVictronBroker(): VictronBrokerState {
   const b = start();

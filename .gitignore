@@ -69,3 +69,9 @@ public/rootCA.pem
 
 # 계측 이력 — 이 배에서 수집된 실측값 (기기마다 다르고 용량이 계속 는다)
 data/history/
+
+# 스마트플러그 예약 — 이 배의 런타임 상태 (기기마다 다르다)
+data/zigbee-timers.json
+
+# 목표 SoC 충전 제어 — 이 배의 런타임 설정
+data/charge-goal.json

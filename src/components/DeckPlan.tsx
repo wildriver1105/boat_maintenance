@@ -491,7 +491,7 @@ export default function DeckPlan({
                         paintOrder="stroke"
                         style={{ userSelect: "none" }}
                       >
-                        {`⏱ ${setting}${act} 예약 · ${fmtLeft(endsAt - nowMs)} 남음`}
+                        {`⏱ ${setting}${act} 예약 · 약 ${fmtLeft(endsAt - nowMs)} 남음`}
                       </text>
                     );
                   })()}

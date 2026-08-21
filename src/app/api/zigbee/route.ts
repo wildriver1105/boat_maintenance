@@ -78,8 +78,9 @@ const ALLOWED_SET: Record<string, (v: unknown) => boolean> = {
   // 지정 시간 뒤 자동 전환 (초)
   countdown_to_turn_off: (v) => typeof v === "number" && v >= 0 && v <= 65535,
   countdown_to_turn_on: (v) => typeof v === "number" && v >= 0 && v <= 65535,
-  // 플러그의 표시등 밝기 (야간 소등용)
-  led_brightness: (v) => typeof v === "number" && v >= 0 && v <= 100,
+  // led_brightness 는 뺐다 — 이 모델의 펌웨어가 UNSUPPORTED_ATTRIBUTE 로 거부한다.
+  //   z2m: genBasic.write({"ledBrightness":40}) failed (Status 'UNSUPPORTED_ATTRIBUTE')
+  // 통과시키면 API 는 성공을 돌려주는데 기기는 아무것도 하지 않는 상태가 된다.
 };
 
 export async function PUT(req: Request) {
